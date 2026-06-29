@@ -1,0 +1,5 @@
+# Current A-share strategy scripts use Python standard-library modules only.
+# Keep this file so a fresh clone has a stable setup step:
+#   python3 -m venv .venv
+#   . .venv/bin/activate
+#   python -m pip install -r requirements.txt
