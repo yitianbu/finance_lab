@@ -381,6 +381,32 @@ def summarize_returns(values: list[float]) -> dict[str, Any]:
     }
 
 
+def summarize_rolling_capital(
+    pick_rows: list[dict[str, Any]],
+    *,
+    rank1_only: bool,
+    daily_capital: float = 3.0,
+    hold_days: int = 5,
+) -> dict[str, Any]:
+    completed = [row for row in pick_rows if bool(row.get("holding_complete"))]
+    if rank1_only:
+        completed = [row for row in completed if int(as_float(row.get("rank"))) == 1]
+        stake = daily_capital
+    else:
+        stake = safe_div(daily_capital, 3.0)
+    pnl = sum(as_float(row.get("strategy_return")) * stake for row in completed)
+    deployed = len(completed) * stake
+    max_capital = daily_capital * hold_days
+    return {
+        "completed_trades": len(completed),
+        "deployed_capital": deployed,
+        "max_capital": max_capital,
+        "pnl": pnl,
+        "pnl_on_deployed": safe_div(pnl, deployed),
+        "pnl_on_max_capital": safe_div(pnl, max_capital),
+    }
+
+
 def month_key(date: str) -> str:
     return date[:7]
 
@@ -393,6 +419,7 @@ def write_outputs(
     analyzed_rows: list[dict[str, Any]] | None = None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
+    complete_daily_rows = [row for row in daily_rows if bool(row.get("holding_complete"))]
     if daily_rows:
         with (output_dir / "daily_detail.csv").open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(daily_rows[0].keys()))
@@ -409,10 +436,10 @@ def write_outputs(
             writer.writeheader()
             writer.writerows(analyzed_rows)
 
-    months = sorted({month_key(row["date"]) for row in daily_rows})
+    months = sorted({month_key(row["date"]) for row in complete_daily_rows})
     monthly_rows: list[dict[str, Any]] = []
     for month in months:
-        rows = [row for row in daily_rows if month_key(row["date"]) == month]
+        rows = [row for row in complete_daily_rows if month_key(row["date"]) == month]
         metrics = {
             "baseline_top3": summarize_returns([as_float(row["baseline_top3_return"]) for row in rows]),
             "gated_top3": summarize_returns([as_float(row["gated_top3_return"]) for row in rows]),
@@ -442,31 +469,38 @@ def write_outputs(
 
     summary = {
         **meta,
-        "baseline_top3": summarize_returns([as_float(row["baseline_top3_return"]) for row in daily_rows]),
-        "gated_top3": summarize_returns([as_float(row["gated_top3_return"]) for row in daily_rows]),
-        "sh": summarize_returns([as_float(row["sh_return"]) for row in daily_rows]),
-        "sz": summarize_returns([as_float(row["sz_return"]) for row in daily_rows]),
-        "cy": summarize_returns([as_float(row["cy_return"]) for row in daily_rows]),
+        "baseline_top3": summarize_returns([as_float(row["baseline_top3_return"]) for row in complete_daily_rows]),
+        "gated_top3": summarize_returns([as_float(row["gated_top3_return"]) for row in complete_daily_rows]),
+        "rank1": summarize_returns([as_float(row["rank1_return"]) for row in complete_daily_rows]),
+        "sh": summarize_returns([as_float(row["sh_return"]) for row in complete_daily_rows]),
+        "sz": summarize_returns([as_float(row["sz_return"]) for row in complete_daily_rows]),
+        "cy": summarize_returns([as_float(row["cy_return"]) for row in complete_daily_rows]),
+        "rolling_top3_capital": summarize_rolling_capital(pick_rows, rank1_only=False),
+        "rolling_rank1_capital": summarize_rolling_capital(pick_rows, rank1_only=True),
         "blocked_days": sum(1 for row in daily_rows if row["gate_allowed"] == "False"),
+        "complete_days": len(complete_daily_rows),
+        "truncated_days": len(daily_rows) - len(complete_daily_rows),
     }
     (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
     lines = [
-        "# 两年5日持有尾盘策略代理回测",
+        "# 5日持有尾盘策略代理回测",
         "",
         f"- 区间：{meta['start_date']} 至 {meta['end_date']}",
         f"- 生成时间：{meta['generated_at']}",
         f"- 候选池：当前非ST沪深股票 {meta['universe_count']} 只；成功取得K线 {meta['bars_ok']} 只；K线错误 {meta['bar_errors']} 只。",
         "- 方法限制：历史日线收盘代理，不是真实历史14:50快照；使用当前股票池，存在幸存者偏差。",
+        f"- 统计口径：总览只统计完整5个交易日批次 {summary['complete_days']} 天；截尾未满5日 {summary['truncated_days']} 天不计入总览。",
         "- 大盘竞争力拦截：滚动20个已完成Top3等权批次，至少15批后要求均值>=-1%、相对上证超额>=+0.5%、胜率>=55%；否则当日空仓。",
         "",
-        "## 总览",
+        "## 完整5日批次总览",
         "| 方案 | 天数 | 日均 | 胜率 | 最好 | 最差 | 复利 | 最大回撤 |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for key, label in [
         ("baseline_top3", "无拦截Top3等权"),
         ("gated_top3", "加拦截Top3等权"),
+        ("rank1", "第一名全仓批次"),
         ("sh", "上证指数"),
         ("sz", "深证成指"),
         ("cy", "创业板指"),
@@ -478,7 +512,22 @@ def write_outputs(
         )
     lines.extend([
         "",
-        "## 月度汇总",
+        "## 滚动资金占用口径",
+        "| 方案 | 完整交易数 | 最大占用资金单位 | 已部署资金单位 | 收益/最大占用 | 收益/已部署 |",
+        "|---|---:|---:|---:|---:|---:|",
+    ])
+    for key, label in [
+        ("rolling_top3_capital", "Top3等权每日买入"),
+        ("rolling_rank1_capital", "第一名全仓每日买入"),
+    ]:
+        item = summary[key]
+        lines.append(
+            f"| {label} | {item['completed_trades']} | {item['max_capital']:.2f} | {item['deployed_capital']:.2f} | "
+            f"{pct(item['pnl_on_max_capital'])} | {pct(item['pnl_on_deployed'])} |"
+        )
+    lines.extend([
+        "",
+        "## 完整5日月度汇总",
         "| 月份 | 天数 | 拦截日 | 无拦截复利 | 加拦截复利 | 上证 | 深成指 | 创业板 | 加拦截-上证 |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ])
@@ -610,6 +659,7 @@ def run(args: argparse.Namespace) -> Path:
                 **row,
                 "rank": rank,
                 "evaluation_date": evaluation_date,
+                "holding_complete": exit_idx - day_idx >= 5,
                 "strategy_return": ret,
             }
             pick_rows.append(pick)
@@ -625,6 +675,7 @@ def run(args: argparse.Namespace) -> Path:
         daily = {
             "date": trade_date,
             "evaluation_date": evaluation_date,
+            "holding_complete": exit_idx - day_idx >= 5,
             "pick_count": len(selected),
             "gate_allowed": str(gate_allowed),
             **gate_metrics,

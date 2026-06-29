@@ -5,6 +5,7 @@ from scripts.stock_strategy.backtest_hold5_tail_proxy import (
     ProxyBar,
     build_analyzed_export_rows,
     select_trade_candidates,
+    summarize_rolling_capital,
 )
 
 
@@ -76,6 +77,22 @@ class BacktestHold5TailProxyExportTests(unittest.TestCase):
         selected = select_trade_candidates(analyzed, limit=3)
 
         self.assertEqual([row["secucode"] for row in selected], ["300001.SZ", "300004.SZ"])
+
+    def test_summarize_rolling_capital_uses_complete_trades_only(self):
+        rows = [
+            {"rank": 1, "strategy_return": 0.10, "holding_complete": True},
+            {"rank": 2, "strategy_return": -0.05, "holding_complete": True},
+            {"rank": 3, "strategy_return": 0.20, "holding_complete": True},
+            {"rank": 1, "strategy_return": 0.50, "holding_complete": False},
+        ]
+
+        top3 = summarize_rolling_capital(rows, rank1_only=False, daily_capital=3.0, hold_days=5)
+        rank1 = summarize_rolling_capital(rows, rank1_only=True, daily_capital=3.0, hold_days=5)
+
+        self.assertEqual(top3["completed_trades"], 3)
+        self.assertAlmostEqual(top3["pnl_on_max_capital"], 0.25 / 15.0)
+        self.assertEqual(rank1["completed_trades"], 1)
+        self.assertAlmostEqual(rank1["pnl_on_max_capital"], 0.10 * 3.0 / 15.0)
 
 
 if __name__ == "__main__":
