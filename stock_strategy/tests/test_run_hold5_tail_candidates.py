@@ -2,9 +2,11 @@ import unittest
 
 from scripts.stock_strategy.run_hold5_tail_candidates import (
     Quote,
+    apply_attack_mode_preference,
     apply_strategy_switch,
     candidate_quality_score,
     classify_risk_tier,
+    evaluate_attack_mode,
     evaluate_strategy_switch,
     recheck_top_rows,
 )
@@ -389,6 +391,55 @@ class Hold5StrategySwitchTests(unittest.TestCase):
         self.assertTrue(all(row["risk_tier"] == "核心" for row in switched[:3]))
         self.assertTrue(all(row["action_tier"] == "正式核心" for row in switched[:3]))
         self.assertTrue(all(row["formal"] for row in switched[:3]))
+
+
+class Hold5AttackModeTests(unittest.TestCase):
+    def test_attack_mode_promotes_risk_focused_candidate_in_strong_regime(self):
+        rows = [make_row(idx) for idx in range(1, 11)]
+        for row in rows[:3]:
+            row["avg_return"] = 0.04
+            row["win_rate"] = 0.62
+            row["profit_factor"] = 2.0
+            row["reward_risk"] = 1.2
+            row["worst_return"] = -0.10
+            row["worst_hold_drawdown"] = -0.12
+        rows[7]["avg_return"] = 0.08
+        rows[7]["win_rate"] = 0.76
+        rows[7]["profit_factor"] = 6.0
+        rows[7]["reward_risk"] = 2.2
+        rows[7]["worst_return"] = -0.08
+        rows[7]["worst_hold_drawdown"] = -0.10
+        recent = {
+            "medium_sample_days": 30,
+            "medium_avg_return": 0.07,
+            "medium_win_rate": 0.70,
+            "medium_excess_best_return": 0.01,
+            "medium_max_drawdown": -0.20,
+        }
+
+        decision = evaluate_attack_mode(rows, recent)
+        preferred = apply_attack_mode_preference(rows, decision)
+
+        self.assertTrue(decision["enabled"])
+        self.assertEqual(decision["preferred_secucode"], rows[7]["secucode"])
+        self.assertTrue(preferred[7]["attack_mode_preferred"])
+        self.assertIn("attack_mode_preferred", preferred[7]["attack_mode_reason"])
+
+    def test_attack_mode_stays_off_when_recent_regime_is_not_strong(self):
+        rows = [make_row(idx) for idx in range(1, 11)]
+        recent = {
+            "medium_sample_days": 30,
+            "medium_avg_return": 0.02,
+            "medium_win_rate": 0.70,
+            "medium_excess_best_return": 0.01,
+            "medium_max_drawdown": -0.20,
+        }
+
+        decision = evaluate_attack_mode(rows, recent)
+        preferred = apply_attack_mode_preference(rows, decision)
+
+        self.assertFalse(decision["enabled"])
+        self.assertTrue(all(not row["attack_mode_preferred"] for row in preferred))
 
 
 if __name__ == "__main__":

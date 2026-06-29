@@ -29,6 +29,17 @@ BENCHMARK_GATE_MIN_AVG_RETURN = 0.008
 BENCHMARK_GATE_MIN_WIN_RATE = 0.50
 BENCHMARK_GATE_MIN_EXCESS_BEST_RETURN = -0.025
 BENCHMARK_GATE_MIN_MAX_DRAWDOWN = -0.65
+ATTACK_MODE_TOP_N = 10
+ATTACK_MODE_STATS_TOP_N = 3
+ATTACK_MODE_MIN_MEDIUM_AVG_RETURN = 0.06
+ATTACK_MODE_MIN_MEDIUM_WIN_RATE = 0.55
+ATTACK_MODE_MIN_PRED_AVG_RETURN = 0.015
+ATTACK_MODE_MIN_PRED_WIN_RATE = 0.54
+ATTACK_MODE_MIN_PROFIT_FACTOR = 1.4
+ATTACK_MODE_MIN_REWARD_RISK = 1.0
+ATTACK_MODE_MIN_WORST_RETURN = -0.22
+ATTACK_MODE_MIN_WORST_HOLD_DRAWDOWN = -0.25
+ATTACK_MODE_MIN_CLOSE_POS = 0.55
 QUOTE_FIELDS = ",".join([
     "f2", "f3", "f4", "f5", "f6", "f8", "f10", "f12", "f13", "f14", "f15",
     "f16", "f17", "f18", "f62", "f86", "f100", "f184",
@@ -715,6 +726,104 @@ def action_priority(row: dict[str, Any]) -> int:
     return {"正式核心": 3, "进取研究": 2, "观察": 1}.get(str(row.get("action_tier") or ""), 0)
 
 
+def attack_mode_score(row: dict[str, Any]) -> float:
+    return (
+        row_float(row, "avg_return") * 130
+        + row_float(row, "win_rate") * 20
+        + min(row_float(row, "profit_factor"), 6.0) * 2
+        + row_float(row, "reward_risk") * 8
+        + row_float(row, "worst_return") * 80
+        + row_float(row, "worst_hold_drawdown") * 40
+        + row_float(row, "max_drawdown") * 20
+        + row_float(row, "close_pos") * 5
+    )
+
+
+def evaluate_attack_mode(rows: list[dict[str, Any]], recent: dict[str, float] | None) -> dict[str, Any]:
+    for row in rows:
+        row["attack_mode_score"] = attack_mode_score(row)
+    if not recent:
+        return {"enabled": False, "reason": "recent_metrics_missing", "preferred_secucode": ""}
+
+    top_stats_rows = rows[:ATTACK_MODE_STATS_TOP_N]
+    if len(top_stats_rows) < ATTACK_MODE_STATS_TOP_N:
+        return {"enabled": False, "reason": "candidate_count_lt_stats_top_n", "preferred_secucode": ""}
+
+    pred_avg = mean([row_float(row, "avg_return") for row in top_stats_rows])
+    pred_win = mean([row_float(row, "win_rate") for row in top_stats_rows])
+    pred_pf = mean([row_float(row, "profit_factor") for row in top_stats_rows])
+    pred_rr = mean([row_float(row, "reward_risk") for row in top_stats_rows])
+    pred_worst = min(row_float(row, "worst_return") for row in top_stats_rows)
+    pred_hold = min(row_float(row, "worst_hold_drawdown") for row in top_stats_rows)
+    pred_close = mean([row_float(row, "close_pos") for row in top_stats_rows])
+
+    checks = {
+        "medium_sample_days": row_float(recent, "medium_sample_days") >= BENCHMARK_GATE_MIN_SAMPLES,
+        "medium_avg_return": row_float(recent, "medium_avg_return") >= ATTACK_MODE_MIN_MEDIUM_AVG_RETURN,
+        "medium_win_rate": row_float(recent, "medium_win_rate") >= ATTACK_MODE_MIN_MEDIUM_WIN_RATE,
+        "medium_excess_best_return": row_float(recent, "medium_excess_best_return") >= BENCHMARK_GATE_MIN_EXCESS_BEST_RETURN,
+        "medium_max_drawdown": row_float(recent, "medium_max_drawdown") >= BENCHMARK_GATE_MIN_MAX_DRAWDOWN,
+        "pred_avg_return": pred_avg >= ATTACK_MODE_MIN_PRED_AVG_RETURN,
+        "pred_win_rate": pred_win >= ATTACK_MODE_MIN_PRED_WIN_RATE,
+        "pred_profit_factor": pred_pf >= ATTACK_MODE_MIN_PROFIT_FACTOR,
+        "pred_reward_risk": pred_rr >= ATTACK_MODE_MIN_REWARD_RISK,
+        "pred_worst_return": pred_worst >= ATTACK_MODE_MIN_WORST_RETURN,
+        "pred_worst_hold_drawdown": pred_hold >= ATTACK_MODE_MIN_WORST_HOLD_DRAWDOWN,
+        "pred_close_pos": pred_close >= ATTACK_MODE_MIN_CLOSE_POS,
+    }
+    if not all(checks.values()):
+        failed = [key for key, ok in checks.items() if not ok]
+        return {
+            "enabled": False,
+            "reason": "attack_checks_failed",
+            "failed_checks": failed,
+            "preferred_secucode": "",
+            "stats": {
+                "pred_avg_return": pred_avg,
+                "pred_win_rate": pred_win,
+                "pred_profit_factor": pred_pf,
+                "pred_reward_risk": pred_rr,
+                "pred_worst_return": pred_worst,
+                "pred_worst_hold_drawdown": pred_hold,
+                "pred_close_pos": pred_close,
+            },
+        }
+
+    eligible_rows = [
+        row for row in rows[:ATTACK_MODE_TOP_N]
+        if classify_risk_tier(row) != "观察" and not row.get("recheck_reject_reason")
+    ]
+    if not eligible_rows:
+        return {"enabled": False, "reason": "no_attack_eligible_candidate", "preferred_secucode": ""}
+    preferred = max(eligible_rows, key=attack_mode_score)
+    return {
+        "enabled": True,
+        "reason": "attack_mode_preferred",
+        "preferred_secucode": str(preferred.get("secucode") or ""),
+        "preferred_name": str(preferred.get("name") or ""),
+        "preferred_rank": rows.index(preferred) + 1,
+        "preferred_score": attack_mode_score(preferred),
+        "stats": {
+            "pred_avg_return": pred_avg,
+            "pred_win_rate": pred_win,
+            "pred_profit_factor": pred_pf,
+            "pred_reward_risk": pred_rr,
+            "pred_worst_return": pred_worst,
+            "pred_worst_hold_drawdown": pred_hold,
+            "pred_close_pos": pred_close,
+        },
+    }
+
+
+def apply_attack_mode_preference(rows: list[dict[str, Any]], decision: dict[str, Any]) -> list[dict[str, Any]]:
+    preferred_secucode = str(decision.get("preferred_secucode") or "")
+    enabled = bool(decision.get("enabled"))
+    for row in rows:
+        row["attack_mode_preferred"] = enabled and str(row.get("secucode") or "") == preferred_secucode
+        row["attack_mode_reason"] = str(decision.get("reason") or "")
+    return rows
+
+
 def load_recent_metrics(path: str | None) -> dict[str, float] | None:
     if not path:
         return None
@@ -872,6 +981,7 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
     aggressive = aggressive_candidates
     watch = watch_candidates
     switch = meta.get("strategy_switch") or {}
+    attack = meta.get("attack_mode") or {}
     switch_state = str(switch.get("state") or "黄色")
     if switch_state == "红色":
         conclusion = "今日不建议新开仓；亏损规避开关红色，正式核心候选 0 只。"
@@ -909,6 +1019,8 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
         f"- Top3左尾均值：最差5日样本 {switch.get('avg_worst_return', 0.0):.2%}，持有期最深回撤 {switch.get('avg_worst_hold_drawdown', 0.0):.2%}。",
         f"- 大盘竞争力门槛：{'未达标' if switch.get('benchmark_gate_red') else ('已达标' if switch.get('benchmark_gate_evaluated') else '未接入/样本不足')}。",
         f"- 近期策略统计：{meta.get('recent_metrics_note', '未接入')}",
+        f"- 攻击模式：{'开启' if attack.get('enabled') else '关闭'}；原因：{attack.get('reason', '未评估')}"
+        + (f"；首选 {attack.get('preferred_secucode')} {attack.get('preferred_name')}（原排序第{attack.get('preferred_rank')}）" if attack.get("enabled") else ""),
         "",
         "## 市场环境",
         f"- 上证指数 {meta['sh_close']:.2f}（{meta['sh_pct']:.2%}），深证成指 {meta['sz_close']:.2f}（{meta['sz_pct']:.2%}），创业板指 {meta['cy_close']:.2f}（{meta['cy_pct']:.2%}）。",
@@ -1105,8 +1217,11 @@ def main() -> None:
     recent_metrics = load_recent_metrics(args.recent_metrics_json)
     strategy_switch = evaluate_strategy_switch(meta, rows, recent_metrics)
     rows = apply_strategy_switch(rows, strategy_switch)
-    rows.sort(key=lambda r: (action_priority(r), r["score"]), reverse=True)
+    attack_mode = evaluate_attack_mode(rows, recent_metrics) if strategy_switch.get("state") != "红色" else {"enabled": False, "reason": "strategy_switch_red", "preferred_secucode": ""}
+    rows = apply_attack_mode_preference(rows, attack_mode)
+    rows.sort(key=lambda r: (action_priority(r), bool(r.get("attack_mode_preferred")), r["score"]), reverse=True)
     meta["strategy_switch"] = strategy_switch
+    meta["attack_mode"] = attack_mode
     if recent_metrics is None:
         meta["recent_metrics_note"] = "未接入最近已完成信号滚动统计，仅使用市场/候选/尾盘开关。"
     else:

@@ -282,6 +282,32 @@ def planned_exit_idx(calendar: list[str], idx: int, hold_days: int = 5) -> int:
     return min(idx + hold_days, len(calendar) - 1)
 
 
+def build_analyzed_export_rows(
+    analyzed: list[dict[str, Any]],
+    bars_by_code: dict[str, list[ProxyBar]],
+    bar_pos_by_code: dict[str, dict[str, int]],
+    trade_date: str,
+    evaluation_date: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if limit <= 0:
+        return rows
+    for rank, row in enumerate(analyzed[:limit], start=1):
+        bars = bars_by_code.get(row["secucode"])
+        signal_pos = bar_pos_by_code.get(row["secucode"], {}).get(trade_date)
+        if not bars or signal_pos is None:
+            continue
+        exit_pos = bar_pos_by_code[row["secucode"]].get(evaluation_date, min(signal_pos + 5, len(bars) - 1))
+        rows.append({
+            **row,
+            "rank": rank,
+            "evaluation_date": evaluation_date,
+            "strategy_return": close_return(bars, signal_pos, exit_pos) - ROUND_TRIP_COST,
+        })
+    return rows
+
+
 def rolling_gate(history: list[dict[str, Any]]) -> tuple[bool, dict[str, Any]]:
     completed = [item for item in history if item["evaluation_date"] < item["date_current"]]
     window = completed[-30:]
@@ -350,7 +376,13 @@ def month_key(date: str) -> str:
     return date[:7]
 
 
-def write_outputs(output_dir: Path, daily_rows: list[dict[str, Any]], pick_rows: list[dict[str, Any]], meta: dict[str, Any]) -> None:
+def write_outputs(
+    output_dir: Path,
+    daily_rows: list[dict[str, Any]],
+    pick_rows: list[dict[str, Any]],
+    meta: dict[str, Any],
+    analyzed_rows: list[dict[str, Any]] | None = None,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     if daily_rows:
         with (output_dir / "daily_detail.csv").open("w", encoding="utf-8", newline="") as handle:
@@ -362,6 +394,11 @@ def write_outputs(output_dir: Path, daily_rows: list[dict[str, Any]], pick_rows:
             writer = csv.DictWriter(handle, fieldnames=list(pick_rows[0].keys()))
             writer.writeheader()
             writer.writerows(pick_rows)
+    if analyzed_rows:
+        with (output_dir / "daily_analyzed_candidates.csv").open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(analyzed_rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(analyzed_rows)
 
     months = sorted({month_key(row["date"]) for row in daily_rows})
     monthly_rows: list[dict[str, Any]] = []
@@ -447,6 +484,7 @@ def write_outputs(output_dir: Path, daily_rows: list[dict[str, Any]], pick_rows:
         "## 文件",
         f"- 每日明细：{output_dir / 'daily_detail.csv'}",
         f"- 每日候选：{output_dir / 'daily_picks.csv'}",
+        *([f"- 每日已分析候选Top{meta.get('save_analyzed_top')}：{output_dir / 'daily_analyzed_candidates.csv'}"] if analyzed_rows else []),
         f"- 月度汇总：{output_dir / 'monthly_summary.csv'}",
         f"- 摘要JSON：{output_dir / 'summary.json'}",
         f"- 报告：{output_dir / 'report.md'}",
@@ -508,6 +546,7 @@ def run(args: argparse.Namespace) -> Path:
 
     daily_rows: list[dict[str, Any]] = []
     pick_rows: list[dict[str, Any]] = []
+    analyzed_rows: list[dict[str, Any]] = []
     history_for_gate: list[dict[str, Any]] = []
     for day_idx, trade_date in enumerate(calendar):
         industry_raw: dict[str, list[ProxyBar]] = defaultdict(list)
@@ -543,6 +582,14 @@ def run(args: argparse.Namespace) -> Path:
 
         exit_idx = planned_exit_idx(calendar, day_idx)
         evaluation_date = calendar[exit_idx]
+        analyzed_rows.extend(build_analyzed_export_rows(
+            analyzed,
+            bars_by_code,
+            bar_pos_by_code,
+            trade_date,
+            evaluation_date,
+            args.save_analyzed_top,
+        ))
         returns: list[float] = []
         for rank, row in enumerate(selected, start=1):
             bars = bars_by_code[row["secucode"]]
@@ -596,8 +643,9 @@ def run(args: argparse.Namespace) -> Path:
         "bar_errors": len(errors),
         "max_validate": args.max_validate,
         "analog_count": args.analog_count,
+        "save_analyzed_top": args.save_analyzed_top,
     }
-    write_outputs(output_dir, daily_rows, pick_rows, meta)
+    write_outputs(output_dir, daily_rows, pick_rows, meta, analyzed_rows)
     (output_dir / "errors.json").write_text(json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8")
     return output_dir
 
@@ -610,6 +658,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-symbols", type=int, default=0)
     parser.add_argument("--max-validate", type=int, default=420)
     parser.add_argument("--analog-count", type=int, default=60)
+    parser.add_argument("--save-analyzed-top", type=int, default=0, help="write top N analyzed candidates per day for research")
     return parser.parse_args()
 
 
