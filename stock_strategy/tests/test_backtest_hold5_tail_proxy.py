@@ -4,6 +4,7 @@ from scripts.stock_strategy.backtest_hold5_tail_proxy import (
     ROUND_TRIP_COST,
     ProxyBar,
     build_analyzed_export_rows,
+    select_trade_candidates,
 )
 
 
@@ -62,6 +63,19 @@ class BacktestHold5TailProxyExportTests(unittest.TestCase):
         self.assertEqual(rows[0]["evaluation_date"], "2026-01-09")
         self.assertAlmostEqual(rows[0]["strategy_return"], 13 / 10 - 1 - ROUND_TRIP_COST)
         self.assertAlmostEqual(rows[1]["strategy_return"], 17 / 20 - 1 - ROUND_TRIP_COST)
+
+    def test_select_trade_candidates_excludes_watch_rows_from_buys(self):
+        analyzed = [
+            {"secucode": "688001.SH", "name": "高分观察", "tier": "观察", "score": 100.0},
+            {"secucode": "300001.SZ", "name": "核心一", "tier": "核心", "score": 90.0},
+            {"secucode": "300002.SZ", "name": "被拒进取", "tier": "进取", "score": 85.0, "reject_reason": "win_rate_lt_55"},
+            {"secucode": "300004.SZ", "name": "进取一", "tier": "进取", "score": 80.0, "reject_reason": ""},
+            {"secucode": "300003.SZ", "name": "观察二", "tier": "观察", "score": 70.0},
+        ]
+
+        selected = select_trade_candidates(analyzed, limit=3)
+
+        self.assertEqual([row["secucode"] for row in selected], ["300001.SZ", "300004.SZ"])
 
 
 if __name__ == "__main__":

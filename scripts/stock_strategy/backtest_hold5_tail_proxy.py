@@ -228,20 +228,20 @@ def analyze_candidate(
         vol_ratio_log=current_features.get("vol_ratio_log", 0.0),
     )
 
+    formal = not reject
     tier = "观察"
-    if not reject:
+    if formal:
         if reward_risk >= 1.2 and worst >= -0.12 and worst_hold >= -0.15 and sample_drawdown >= -0.35 and close_pos >= 0.55:
             tier = "核心"
         elif reward_risk >= 0.9 and worst >= -0.22 and sample_drawdown >= -0.45:
             tier = "进取"
-    elif reward_risk >= 0.9 and worst >= -0.22 and max_drawdown(returns) >= -0.45:
-        tier = "进取"
 
     return {
         "date": current.date,
         "secucode": symbol.secucode,
         "name": symbol.name,
         "tier": tier,
+        "formal": formal,
         "score": score,
         "entry_price": current.close,
         "win_rate": safe_div(len(wins), len(returns)),
@@ -306,6 +306,15 @@ def build_analyzed_export_rows(
             "strategy_return": close_return(bars, signal_pos, exit_pos) - ROUND_TRIP_COST,
         })
     return rows
+
+
+def select_trade_candidates(analyzed: list[dict[str, Any]], limit: int = 3) -> list[dict[str, Any]]:
+    tradeable_tiers = {"核心", "进取"}
+    return [
+        row
+        for row in analyzed
+        if str(row.get("tier") or "") in tradeable_tiers and not str(row.get("reject_reason") or "")
+    ][:limit]
 
 
 def rolling_gate(history: list[dict[str, Any]]) -> tuple[bool, dict[str, Any]]:
@@ -578,7 +587,7 @@ def run(args: argparse.Namespace) -> Path:
             if row is not None:
                 analyzed.append(row)
         analyzed.sort(key=lambda row: row["score"], reverse=True)
-        selected = analyzed[:3]
+        selected = select_trade_candidates(analyzed, limit=3)
 
         exit_idx = planned_exit_idx(calendar, day_idx)
         evaluation_date = calendar[exit_idx]
