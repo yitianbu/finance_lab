@@ -1,0 +1,152 @@
+{
+  "generated_at": "2026-07-01T22:14:04+08:00",
+  "source": "/Users/weifeng/works/finance_lab/reports/automation_5_14_50/june_missing_filled_rank1_20260701_183800/full_june_rank1_filled.csv",
+  "as_of": "2026-07-01",
+  "policy": "June filled rank1, actual_saved_1450 + proxy_fill; overlapping positions; per-signal 30k/40k budget; A-share 100-share lot constraint. proxy_fill is not actual 14:50 output.",
+  "summaries": [
+    {
+      "budget": 30000,
+      "mode": "fixed5",
+      "signals": 21,
+      "bought": 9,
+      "skipped": 12,
+      "closed": 8,
+      "open": 1,
+      "wins_closed": 5,
+      "win_rate_closed": 0.625,
+      "realized_pnl": 22118.06,
+      "floating_pnl": -587.11,
+      "marked_pnl": 21530.96,
+      "max_capital_used": 76932.6,
+      "return_on_max_capital": 0.27986779492698793,
+      "source_breakdown": {
+        "actual_saved_1450": {
+          "signals": 12,
+          "bought": 6,
+          "skipped": 6,
+          "realized_pnl": 22891.08,
+          "floating_pnl": -587.11,
+          "marked_pnl": 22303.97,
+          "capital_sum": 130485.0
+        },
+        "proxy_fill": {
+          "signals": 9,
+          "bought": 3,
+          "skipped": 6,
+          "realized_pnl": -773.01,
+          "floating_pnl": 0,
+          "marked_pnl": -773.01,
+          "capital_sum": 76932.6
+        }
+      }
+    },
+    {
+      "budget": 30000,
+      "mode": "ma5",
+      "signals": 21,
+      "bought": 9,
+      "skipped": 12,
+      "closed": 8,
+      "open": 1,
+      "wins_closed": 5,
+      "win_rate_closed": 0.625,
+      "realized_pnl": 13807.06,
+      "floating_pnl": -587.11,
+      "marked_pnl": 13219.96,
+      "max_capital_used": 86618.0,
+      "return_on_max_capital": 0.15262367083054326,
+      "source_breakdown": {
+        "actual_saved_1450": {
+          "signals": 12,
+          "bought": 6,
+          "skipped": 6,
+          "realized_pnl": 15868.08,
+          "floating_pnl": -587.11,
+          "marked_pnl": 15280.97,
+          "capital_sum": 130485.0
+        },
+        "proxy_fill": {
+          "signals": 9,
+          "bought": 3,
+          "skipped": 6,
+          "realized_pnl": -2061.01,
+          "floating_pnl": 0,
+          "marked_pnl": -2061.01,
+          "capital_sum": 76932.6
+        }
+      }
+    },
+    {
+      "budget": 40000,
+      "mode": "fixed5",
+      "signals": 21,
+      "bought": 16,
+      "skipped": 5,
+      "closed": 15,
+      "open": 1,
+      "wins_closed": 11,
+      "win_rate_closed": 0.7333333333333333,
+      "realized_pnl": 43328.39,
+      "floating_pnl": -1174.21,
+      "marked_pnl": 42154.17,
+      "max_capital_used": 165244.0,
+      "return_on_max_capital": 0.2551025891409068,
+      "source_breakdown": {
+        "actual_saved_1450": {
+          "signals": 12,
+          "bought": 10,
+          "skipped": 2,
+          "realized_pnl": 39627.55,
+          "floating_pnl": -1174.21,
+          "marked_pnl": 38453.34,
+          "capital_sum": 304665.0
+        },
+        "proxy_fill": {
+          "signals": 9,
+          "bought": 6,
+          "skipped": 3,
+          "realized_pnl": 3700.84,
+          "floating_pnl": 0,
+          "marked_pnl": 3700.84,
+          "capital_sum": 193510.2
+        }
+      }
+    },
+    {
+      "budget": 40000,
+      "mode": "ma5",
+      "signals": 21,
+      "bought": 16,
+      "skipped": 5,
+      "closed": 13,
+      "open": 3,
+      "wins_closed": 10,
+      "win_rate_closed": 0.7692307692307693,
+      "realized_pnl": 53235.92,
+      "floating_pnl": -265.34,
+      "marked_pnl": 52970.57,
+      "max_capital_used": 307203.2,
+      "return_on_max_capital": 0.1724284520473745,
+      "source_breakdown": {
+        "actual_saved_1450": {
+          "signals": 12,
+          "bought": 10,
+          "skipped": 2,
+          "realized_pnl": 22764.68,
+          "floating_pnl": -265.34,
+          "marked_pnl": 22499.34,
+          "capital_sum": 304665.0
+        },
+        "proxy_fill": {
+          "signals": 9,
+          "bought": 6,
+          "skipped": 3,
+          "realized_pnl": 30471.24,
+          "floating_pnl": 0,
+          "marked_pnl": 30471.24,
+          "capital_sum": 193510.2
+        }
+      }
+    }
+  ]
+}
