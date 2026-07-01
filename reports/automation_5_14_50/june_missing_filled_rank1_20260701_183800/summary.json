@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-07-01T21:57:44+08:00",
+  "as_of": "2026-07-01",
+  "trading_days": 21,
+  "actual_saved_1450_days": 12,
+  "proxy_fill_days": 9,
+  "holiday_excluded": [
+    "2026-06-19"
+  ],
+  "missing_dates": [
+    "2026-06-01",
+    "2026-06-02",
+    "2026-06-03",
+    "2026-06-04",
+    "2026-06-05",
+    "2026-06-08",
+    "2026-06-09",
+    "2026-06-10",
+    "2026-06-29"
+  ],
+  "policy": "Fill June 2026 missing strict saved 14:50 rank1 days with historical daily proxy rank1; proxy_fill is not actual 14:50 output.",
+  "source_saved": "/Users/weifeng/works/finance_lab/reports/automation_5_14_50/saved_recommendations_backtest_20260701_180700/saved_recommendation_trades.csv",
+  "source_proxy": "/Users/weifeng/works/finance_lab/reports/automation_5_14_50/full_proxy_rank1_ma5_recent_month_20260701_175222/daily_rank1_ma5_trades.csv"
+}
