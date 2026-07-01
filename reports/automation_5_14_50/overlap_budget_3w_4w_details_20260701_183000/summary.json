@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-07-01T19:24:15+08:00",
+  "source": "/Users/weifeng/works/finance_lab/reports/automation_5_14_50/saved_recommendations_backtest_20260701_180700/saved_recommendation_trades.csv",
+  "policy": "strict saved 14:50 rank1; overlapping positions allowed; one-lot A-share constraint; per-signal budget 30k/40k",
+  "summaries": [
+    {
+      "budget": 30000,
+      "mode": "fixed5",
+      "signals": 12,
+      "bought": 6,
+      "skipped": 6,
+      "closed": 5,
+      "open": 1,
+      "wins": 4,
+      "win_rate_closed": 0.8,
+      "realized_pnl": 22891.08,
+      "floating_pnl": -587.11,
+      "marked_pnl": 22303.97,
+      "max_capital_used": 73941.0,
+      "return_on_max_capital": 0.30164549438065474
+    },
+    {
+      "budget": 30000,
+      "mode": "ma5",
+      "signals": 12,
+      "bought": 6,
+      "skipped": 6,
+      "closed": 5,
+      "open": 1,
+      "wins": 4,
+      "win_rate_closed": 0.8,
+      "realized_pnl": 15868.08,
+      "floating_pnl": -587.11,
+      "marked_pnl": 15280.97,
+      "max_capital_used": 86618.0,
+      "return_on_max_capital": 0.1764179443071879
+    },
+    {
+      "budget": 40000,
+      "mode": "fixed5",
+      "signals": 12,
+      "bought": 10,
+      "skipped": 2,
+      "closed": 9,
+      "open": 1,
+      "wins": 7,
+      "win_rate_closed": 0.7777777777777778,
+      "realized_pnl": 39627.55,
+      "floating_pnl": -1174.21,
+      "marked_pnl": 38453.34,
+      "max_capital_used": 165244.0,
+      "return_on_max_capital": 0.2327063947858924
+    },
+    {
+      "budget": 40000,
+      "mode": "ma5",
+      "signals": 12,
+      "bought": 10,
+      "skipped": 2,
+      "closed": 7,
+      "open": 3,
+      "wins": 6,
+      "win_rate_closed": 0.8571428571428571,
+      "realized_pnl": 22764.68,
+      "floating_pnl": -265.34,
+      "marked_pnl": 22499.34,
+      "max_capital_used": 245331.0,
+      "return_on_max_capital": 0.09171012020494762
+    }
+  ]
+}
