@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>策略研究网站</title>
-    <link rel="stylesheet" href="styles.css?v=20260703-crowding-flow" />
+    <link rel="stylesheet" href="styles.css?v=20260703-strategy-cards" />
   </head>
   <body>
     <div class="app-shell" data-api="dashboard.json" data-file-base="files">
@@ -30,25 +30,17 @@
         </section>
 
         <section class="strategy-workbench" aria-label="策略详情">
-          <nav class="panel strategy-nav" aria-label="策略列表">
+          <section class="panel strategy-card-panel" aria-label="策略卡片">
             <div class="panel-heading">
-              <span class="section-kicker">Catalog</span>
-              <h2>策略列表</h2>
+              <span class="section-kicker">Cards</span>
+              <h2>策略卡片</h2>
             </div>
             <div id="strategy-list" class="strategy-list"></div>
-          </nav>
+          </section>
 
           <article class="panel strategy-detail-panel">
             <div id="strategy-detail" class="strategy-detail"></div>
           </article>
-        </section>
-
-        <section class="panel strategy-matrix-panel" aria-label="策略矩阵">
-          <div class="panel-heading">
-            <span class="section-kicker">Matrix</span>
-            <h2>策略矩阵</h2>
-          </div>
-          <div id="strategy-matrix"></div>
         </section>
 
         <section class="dashboard-title" aria-label="本地运行数据">
@@ -137,6 +129,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=20260703-crowding-flow"></script>
+    <script src="app.js?v=20260703-strategy-cards"></script>
   </body>
 </html>

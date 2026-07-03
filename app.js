@@ -103,11 +103,19 @@
     return rows.find((item) => item && item.exists && item.path) || rows.find((item) => item && item.path);
   }
 
+  function artifactCount(strategy) {
+    return [
+      ...(strategy.reports || []),
+      ...(strategy.docs || []),
+      ...(strategy.scripts || []),
+    ].filter((item) => item && item.exists && item.path).length;
+  }
+
   function selectStrategy(strategyId, shouldScroll) {
     selectedStrategyId = strategyId;
     if (latestDashboard) renderStrategyCatalog(latestDashboard);
     if (shouldScroll) {
-      document.querySelector(".strategy-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector(".strategy-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
@@ -121,7 +129,7 @@
       statsTarget.innerHTML = "";
       strategyListElement.innerHTML = `<div class="empty">暂无策略目录。</div>`;
       detailTarget.innerHTML = `<div class="empty">暂无策略详情。</div>`;
-      matrixTarget.innerHTML = `<div class="empty">暂无策略矩阵。</div>`;
+      if (matrixTarget) matrixTarget.innerHTML = `<div class="empty">暂无策略矩阵。</div>`;
       return;
     }
 
@@ -144,12 +152,31 @@
 
     strategyListElement.innerHTML = catalog
       .map(
-        (item) => `
-          <button class="strategy-tab ${item.id === selected.id ? "active" : ""}" type="button" data-strategy-id="${escapeHtml(item.id)}">
-            <span>${escapeHtml(item.name)}</span>
-            <small>${escapeHtml(item.status)} · ${escapeHtml(item.cadence)}</small>
+        (item) => {
+          const artifact = firstExistingArtifact(item);
+          const outputs = item.outputs || [];
+          const activeClass = item.id === selected.id ? "active" : "";
+          return `
+          <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}">
+            <span class="strategy-card-head">
+              ${badge(item.status, tone(item.tone))}
+              <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
+            </span>
+            <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
+            <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
+            <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
+            <span class="strategy-card-meta">
+              <span><small>节奏</small><b>${escapeHtml(item.cadence || "--")}</b></span>
+              <span><small>信号</small><b>${escapeHtml(String((item.signals || []).length))}</b></span>
+              <span><small>输出</small><b>${escapeHtml(String(outputs.length))}</b></span>
+            </span>
+            <span class="strategy-card-footer">
+              <span>${artifact ? escapeHtml(artifact.label || "最新产物") : "暂无产物"}</span>
+              <em>查看详情</em>
+            </span>
           </button>
-        `
+        `;
+        }
       )
       .join("");
 
@@ -196,30 +223,7 @@
       </div>
     `;
 
-    const rows = catalog.map((strategy) => ({
-      id: strategy.id,
-      name: strategy.name,
-      status: strategy.status,
-      tone: strategy.tone,
-      cadence: strategy.cadence,
-      output: (strategy.outputs || []).slice(0, 2).join(" / "),
-      artifact: firstExistingArtifact(strategy),
-    }));
-    matrixTarget.innerHTML = table(
-      [
-        {
-          label: "策略",
-          render: (row) =>
-            `<button class="table-link" type="button" data-strategy-id="${escapeHtml(row.id)}">${escapeHtml(row.name)}</button>`,
-        },
-        { label: "状态", render: (row) => badge(row.status, tone(row.tone)) },
-        { label: "节奏", render: (row) => escapeHtml(row.cadence) },
-        { label: "关键输出", render: (row) => escapeHtml(row.output) },
-        { label: "最新产物", render: (row) => artifactLink(row.artifact) },
-      ],
-      rows,
-      "暂无策略矩阵。"
-    );
+    if (matrixTarget) matrixTarget.innerHTML = "";
   }
 
   function setMetricList(elementId, rows) {

@@ -2,7 +2,7 @@
   "strategy_name": "10亿增量策略",
   "mode": "local",
   "report_date": "2026-06-24",
-  "loaded_at": "2026-07-03T11:24:16.630359+00:00",
+  "loaded_at": "2026-07-03T11:30:33.030022+00:00",
   "strategy_catalog": [
     {
       "id": "hold5-tail",
