@@ -172,21 +172,25 @@ main {
 
 .strategy-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
-  padding: 16px 18px 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  padding: 18px;
 }
 
 .strategy-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-areas:
+    "head meta"
+    "body meta"
+    "footer footer";
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 14px 18px;
   width: 100%;
-  min-height: 246px;
-  padding: 16px;
+  min-height: 0;
+  padding: 18px 20px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfb 100%);
   color: var(--text);
   text-align: left;
   cursor: pointer;
@@ -212,7 +216,7 @@ main {
 .strategy-card.active {
   border-color: #6aa1b8;
   background: linear-gradient(180deg, #f3fbf8 0%, #ffffff 100%);
-  box-shadow: inset 0 4px 0 var(--green), 0 14px 28px rgba(28, 43, 58, 0.1);
+  box-shadow: inset 5px 0 0 var(--green), 0 14px 28px rgba(28, 43, 58, 0.1);
 }
 
 .strategy-card.dragging {
@@ -227,19 +231,25 @@ main {
 }
 
 .strategy-card.drag-before {
-  box-shadow: inset 4px 0 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
+  box-shadow: inset 0 4px 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
 }
 
 .strategy-card.drag-after {
-  box-shadow: inset -4px 0 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
+  box-shadow: inset 0 -4px 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
 }
 
-.strategy-card-head,
-.strategy-card-footer {
+.strategy-card-head {
+  grid-area: head;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.strategy-card-heading {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
 }
 
 .strategy-card-tools {
@@ -268,11 +278,18 @@ main {
 
 .strategy-card-title {
   display: block;
-  min-height: 44px;
-  font-size: 19px;
-  line-height: 1.18;
+  font-size: 22px;
+  line-height: 1.16;
   letter-spacing: 0;
   overflow-wrap: anywhere;
+}
+
+.strategy-card-body {
+  display: grid;
+  grid-area: body;
+  gap: 8px;
+  min-width: 0;
+  max-width: 920px;
 }
 
 .strategy-card-mode {
@@ -286,24 +303,25 @@ main {
 .strategy-card-objective {
   display: -webkit-box;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
 .strategy-card-meta {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-area: meta;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-top: auto;
+  align-self: stretch;
 }
 
 .strategy-card-meta span {
-  min-height: 52px;
-  padding: 8px;
+  min-height: 64px;
+  padding: 10px;
   border: 1px solid #e5ebf0;
   border-radius: 8px;
   background: #ffffff;
@@ -324,12 +342,17 @@ main {
 
 .strategy-card-meta b {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 750;
   line-height: 1.25;
 }
 
 .strategy-card-footer {
+  display: flex;
+  grid-area: footer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding-top: 12px;
   border-top: 1px solid #e7edf2;
   color: var(--muted);
@@ -996,6 +1019,19 @@ main {
     grid-template-columns: 1fr;
   }
 
+  .strategy-card {
+    grid-template-areas:
+      "head"
+      "body"
+      "meta"
+      "footer";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .strategy-card-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .metric-strip,
   .mini-metric-grid,
   .strategy-flow {
@@ -1029,10 +1065,29 @@ main {
   .action-summary,
   .metric-strip,
   .mini-metric-grid,
+  .strategy-card-meta,
   .strategy-flow,
   .user-holding-grid,
+  .user-holding-metrics,
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .strategy-card {
+    padding: 16px;
+  }
+
+  .strategy-card-head {
+    flex-direction: column;
+  }
+
+  .strategy-card-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .strategy-card-title {
+    font-size: 20px;
   }
 
   .strategy-detail {
