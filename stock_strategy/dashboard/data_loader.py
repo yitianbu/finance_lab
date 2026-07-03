@@ -60,7 +60,7 @@ class StrategyDashboardLoader:
             "mode": "local",
             "report_date": report_date,
             "loaded_at": datetime.now(timezone.utc).isoformat(),
-            "strategy_catalog": self._strategy_catalog(),
+            "strategy_catalog": self._strategy_catalog(hold5_summary),
             "market": self._market(automation),
             "candidate_status": self._candidate_status(automation, candidate_scan),
             "t_plus_1": automation.get("t_plus_1") or {},
@@ -250,7 +250,7 @@ class StrategyDashboardLoader:
         except ValueError:
             return text
 
-    def _strategy_catalog(self) -> list[dict[str, Any]]:
+    def _strategy_catalog(self, hold5_summary: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         return [
             {
                 "id": "hold5-tail",
@@ -261,6 +261,14 @@ class StrategyDashboardLoader:
                 "mode": "候选输出",
                 "objective": "在尾盘用全A实时快照筛出可研究的5个交易日持有候选，并用策略状态拦截控制新开仓节奏。",
                 "workflow": ["全A实时快照", "硬过滤", "相似样本验证", "Top10复核", "风险分层"],
+                "workflow_notes": [
+                    {"label": "全A实时快照", "description": "14:50 左右读取全市场实时快照，先得到当天可研究的真实候选池。"},
+                    {"label": "硬过滤", "description": "剔除 ST、停牌、价格异常、流动性不足和一字板等不适合成交的标的。"},
+                    {"label": "相似样本验证", "description": "按历史近似样本统计 5 日胜率、平均收益、利润因子、左尾和持有期回撤。"},
+                    {"label": "Top10复核", "description": "对最终候选再拉轻量报价，尾盘价格恶化、回落或接近不可成交状态时降级。"},
+                    {"label": "风险分层", "description": "输出正式核心、进取研究和观察名单；策略红灯时默认不建议新开仓。"},
+                ],
+                "detail_sections": self._hold5_detail_sections(hold5_summary or {}),
                 "signals": [
                     "旧底层排序：胜率、平均5日收益、利润因子、尾盘位置、成交额、板块共振和主力净额。",
                     "30样本强收益状态拦截：平均收益、胜率、相对最强指数超额和滚动最大回撤同时达标。",
@@ -572,6 +580,66 @@ class StrategyDashboardLoader:
                 ],
             },
         ]
+
+    def _hold5_detail_sections(self, summary: dict[str, Any]) -> list[dict[str, Any]]:
+        formal = [item for item in summary.get("formal") or [] if isinstance(item, dict)]
+        watch = [item for item in summary.get("watch") or [] if isinstance(item, dict)]
+        latest_items = [
+            (
+                f"最新信号日 {summary.get('latest_date') or '--'}；第5个交易日 "
+                f"{summary.get('sell_date') or '--'} 做卖出确认，盈利且站上 MA5 时可继续持有。"
+            ),
+            (
+                f"候选池硬过滤后 {self._display_count(summary.get('eligible_count'))} 只，"
+                f"相似样本验证 {self._display_count(summary.get('validated_count'))} 只；"
+                f"正式候选 {len(formal)} 只，观察 {len(watch)} 只。"
+            ),
+        ]
+        if summary.get("top_industries"):
+            latest_items.append(f"板块共振靠前：{summary['top_industries']}")
+        if summary.get("recent_metrics_note"):
+            latest_items.append(f"近期策略状态：{summary['recent_metrics_note']}")
+
+        return [
+            {
+                "title": "保留口径",
+                "items": [
+                    "当前保留旧底层排序，不再使用两次手工新权重实验。",
+                    "核心优化是 30 样本强收益状态拦截、Top10 轻量实时报价复核和强行情攻击模式排序。",
+                    "风险层级只作为行动标签，不把低分核心强行排到高分进取前面。",
+                ],
+            },
+            {
+                "title": "运行流程",
+                "items": [
+                    "交易日 14:50 拉全A实时快照，先用可成交性、流动性、尾盘承接和异常价格做硬过滤。",
+                    "对预筛股票找历史相似样本，计算 5 日胜率、平均收益、利润因子、最差样本和持有期回撤。",
+                    "最终 Top10 再复核实时价格，若尾盘跌破、上影线明显或报价异常，会降级或剔除。",
+                ],
+            },
+            {
+                "title": "最新报告怎么看",
+                "items": latest_items,
+            },
+            {
+                "title": "输出层级",
+                "items": [
+                    "正式核心：收益、左尾、持有回撤和 reward/risk 相对干净，可作为主要研究对象。",
+                    "进取研究：预期收益较强，但左尾或回撤不够干净，只适合小仓位研究。",
+                    "观察名单：当前尾盘位置、风险或统计质量不足，需要修复条件后再考虑。",
+                ],
+            },
+            {
+                "title": "为什么不是实盘指令",
+                "items": [
+                    "历史验证主要是日线收盘代理，不是真实历史 14:50 分钟级盘口回放。",
+                    "页面只发布研究候选和风控说明，不连接券商、不自动下单，也不构成投资建议。",
+                ],
+            },
+        ]
+
+    def _display_count(self, value: Any) -> str:
+        return str(value) if value is not None and value != "" else "--"
 
     def _artifact(self, label: str, relative_path: str) -> dict[str, Any]:
         path = self.base_dir / relative_path

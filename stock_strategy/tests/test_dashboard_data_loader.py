@@ -296,6 +296,16 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertIn("hold5_top3_summary", dashboard["source_files"])
             hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
             self.assertIn("20260626_145203/summary.json", hold5_strategy["reports"][0]["path"])
+            detail_sections = hold5_strategy["detail_sections"]
+            detail_titles = [section["title"] for section in detail_sections]
+            self.assertIn("保留口径", detail_titles)
+            self.assertIn("最新报告怎么看", detail_titles)
+            self.assertIn("为什么不是实盘指令", detail_titles)
+            latest_section = next(section for section in detail_sections if section["title"] == "最新报告怎么看")
+            latest_text = " ".join(latest_section["items"])
+            self.assertIn("2026-06-26", latest_text)
+            self.assertIn("硬过滤后 418 只", latest_text)
+            self.assertIn("正式候选 4 只", latest_text)
 
 
 if __name__ == "__main__":
