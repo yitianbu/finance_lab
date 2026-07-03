@@ -60,7 +60,10 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn('aria-label="策略模块"', html)
             self.assertIn(">策略模块</h2>", html)
             self.assertNotIn(">策略卡片</h2>", html)
-            self.assertIn('id="strategy-detail-panel"', html)
+            self.assertIn('id="strategy-detail-panel" class="strategy-detail-panel"', html)
+            self.assertNotIn('id="strategy-detail-panel" class="panel strategy-detail-panel"', html)
+            self.assertIn('class="dashboard-module"', html)
+            self.assertIn('aria-label="10亿增量策略控制台"', html)
 
             app_js = (output / "app.js").read_text("utf-8")
             styles = (output / "styles.css").read_text("utf-8")
@@ -71,6 +74,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn('href="${escapeHtml(strategyHref(item.id))}"', app_js)
             self.assertIn('searchParams.set("strategy"', app_js)
             self.assertIn(".strategy-detail-module", styles)
+            self.assertIn(".dashboard-module", styles)
             self.assertIn("grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));", styles)
 
             payload = json.loads((output / "dashboard.json").read_text("utf-8"))
