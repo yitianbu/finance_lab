@@ -103,6 +103,14 @@
     return rows.find((item) => item && item.exists && item.path) || rows.find((item) => item && item.path);
   }
 
+  function selectStrategy(strategyId, shouldScroll) {
+    selectedStrategyId = strategyId;
+    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+    if (shouldScroll) {
+      document.querySelector(".strategy-workbench")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   function renderStrategyCatalog(data) {
     const catalog = data.strategy_catalog || [];
     const statsTarget = document.getElementById("strategy-stats");
@@ -177,6 +185,7 @@
     `;
 
     const rows = catalog.map((strategy) => ({
+      id: strategy.id,
       name: strategy.name,
       status: strategy.status,
       tone: strategy.tone,
@@ -186,7 +195,11 @@
     }));
     matrixTarget.innerHTML = table(
       [
-        { label: "策略", render: (row) => escapeHtml(row.name) },
+        {
+          label: "策略",
+          render: (row) =>
+            `<button class="table-link" type="button" data-strategy-id="${escapeHtml(row.id)}">${escapeHtml(row.name)}</button>`,
+        },
         { label: "状态", render: (row) => badge(row.status, tone(row.tone)) },
         { label: "节奏", render: (row) => escapeHtml(row.cadence) },
         { label: "关键输出", render: (row) => escapeHtml(row.output) },
@@ -468,12 +481,12 @@
   }
 
   refreshButton.addEventListener("click", loadDashboard);
-  strategyListElement.addEventListener("click", (event) => {
+  document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const button = target ? target.closest("[data-strategy-id]") : null;
     if (!button) return;
-    selectedStrategyId = button.dataset.strategyId;
-    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+    const fromMatrix = Boolean(button.closest("#strategy-matrix"));
+    selectStrategy(button.dataset.strategyId, fromMatrix || Boolean(button.closest(".strategy-list")));
   });
   window.addEventListener("resize", () => {
     if (latestDashboard) renderChart(latestDashboard);

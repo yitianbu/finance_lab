@@ -606,6 +606,20 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+.table-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.table-link:hover {
+  text-decoration: underline;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
