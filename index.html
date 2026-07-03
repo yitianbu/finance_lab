@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>策略研究网站</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" data-api="dashboard.json" data-file-base="files">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">本地研究站</p>
+          <h1>策略研究网站</h1>
+        </div>
+        <div class="topbar-meta">
+          <span id="report-date">最新本地报告日：--</span>
+          <span id="loaded-at">读取时间：--</span>
+          <button id="refresh-button" type="button" title="重新读取本地策略文件">刷新</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="strategy-hero" aria-label="策略总览">
+          <div>
+            <p class="eyebrow">Strategy Library</p>
+            <h2>工程策略总览</h2>
+          </div>
+          <div id="strategy-stats" class="strategy-stats"></div>
+        </section>
+
+        <section class="strategy-workbench" aria-label="策略详情">
+          <nav class="panel strategy-nav" aria-label="策略列表">
+            <div class="panel-heading">
+              <span class="section-kicker">Catalog</span>
+              <h2>策略列表</h2>
+            </div>
+            <div id="strategy-list" class="strategy-list"></div>
+          </nav>
+
+          <article class="panel strategy-detail-panel">
+            <div id="strategy-detail" class="strategy-detail"></div>
+          </article>
+        </section>
+
+        <section class="panel strategy-matrix-panel" aria-label="策略矩阵">
+          <div class="panel-heading">
+            <span class="section-kicker">Matrix</span>
+            <h2>策略矩阵</h2>
+          </div>
+          <div id="strategy-matrix"></div>
+        </section>
+
+        <section class="dashboard-title" aria-label="本地运行数据">
+          <div>
+            <p class="eyebrow">Local Dashboard</p>
+            <h2>10亿增量策略控制台</h2>
+          </div>
+        </section>
+
+        <section class="action-grid" aria-label="今日行动面板">
+          <article class="panel action-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Action</span>
+              <h2>今日行动面板</h2>
+            </div>
+            <div id="action-summary" class="action-summary"></div>
+          </article>
+
+          <article class="panel compact-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Market</span>
+              <h2>市场状态</h2>
+            </div>
+            <dl id="market-list" class="metric-list"></dl>
+          </article>
+
+          <article class="panel compact-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">T+1</span>
+              <h2>交易日节奏</h2>
+            </div>
+            <dl id="tplus-list" class="metric-list"></dl>
+          </article>
+        </section>
+
+        <section class="metric-strip" id="backtest-metrics" aria-label="回测指标"></section>
+
+        <section class="panel hold5-panel" aria-label="5日盈利前三">
+          <div class="panel-heading">
+            <span class="section-kicker">Hold 5</span>
+            <h2>5日盈利前三</h2>
+          </div>
+          <div class="hold5-content">
+            <div id="hold5-summary" class="hold5-summary"></div>
+            <div id="hold5-picks"></div>
+          </div>
+        </section>
+
+        <section class="two-column">
+          <article class="panel table-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Holdings</span>
+              <h2>持仓风险提示</h2>
+            </div>
+            <div id="holdings-alerts"></div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Regime</span>
+              <h2>市场状态曲线</h2>
+            </div>
+            <canvas id="market-chart" width="760" height="280" aria-label="市场状态曲线"></canvas>
+          </article>
+        </section>
+
+        <section class="two-column lower-grid">
+          <article class="panel table-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Trades</span>
+              <h2>最近回测交易</h2>
+            </div>
+            <div id="trades-table"></div>
+          </article>
+
+          <article class="panel table-panel">
+            <div class="panel-heading">
+              <span class="section-kicker">Audit</span>
+              <h2>纸面实盘与数据说明</h2>
+            </div>
+            <div id="live-trading"></div>
+            <div id="data-notes" class="note-list"></div>
+            <div id="source-files" class="source-list"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

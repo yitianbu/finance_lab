@@ -1,0 +1,285 @@
+{
+  "generated_at": "2026-06-10T18:45:55",
+  "start_date": "2024-01-01",
+  "end_date": "2026-06-08",
+  "event_count": 35412,
+  "cached_kline_count": 1100,
+  "variants": {
+    "event_labeled_pre3d": {
+      "kind": "event_labeled_upper_bound_not_directly_tradable",
+      "config": {
+        "min_event_score": 96,
+        "pre_entry_days": 3,
+        "post_notice_hold_days": 1,
+        "proxy_hold_days": 5,
+        "stop_loss": 0.05,
+        "take_profit": 0.12,
+        "min_pre_5d_return": 0.02,
+        "min_pre_10d_excess": 0.01,
+        "max_pre_20d_return": 0.25,
+        "min_history_days": 20,
+        "max_open_gap": 0.05,
+        "max_forecast_jz": 100000000,
+        "exclude_notice_months": [
+          "01",
+          "07"
+        ],
+        "proxy_months": [
+          "03",
+          "04",
+          "08",
+          "10"
+        ],
+        "exclude_name_prefixes": [
+          "*ST",
+          "ST"
+        ],
+        "exclude_name_contains": [
+          "退"
+        ],
+        "position_size": 0.1,
+        "max_per_day": 5
+      },
+      "candidate_count": 19,
+      "selected_signal_count": 19,
+      "executed_trade_count": 19,
+      "metrics": {
+        "start_date": "2024-02-26",
+        "end_date": "2026-04-16",
+        "trade_count": 19,
+        "total_return": 0.0553361009791673,
+        "annual_return": 0.025541382076330166,
+        "max_drawdown": -0.010274851967457144,
+        "win_rate": 0.5789473684210527,
+        "avg_trade_return": 0.028679754265107296,
+        "median_trade_return": 0.02545879614300217,
+        "avg_win": 0.07899460394289627,
+        "avg_loss": -0.040503164041852543,
+        "profit_factor": 2.6817060590438353,
+        "hs300_return": 0.3715946208909582,
+        "excess_vs_hs300": -0.3162585199117909
+      }
+    },
+    "event_labeled_pre5d": {
+      "kind": "event_labeled_upper_bound_not_directly_tradable",
+      "config": {
+        "min_event_score": 96,
+        "pre_entry_days": 5,
+        "post_notice_hold_days": 1,
+        "proxy_hold_days": 5,
+        "stop_loss": 0.05,
+        "take_profit": 0.12,
+        "min_pre_5d_return": 0.02,
+        "min_pre_10d_excess": 0.01,
+        "max_pre_20d_return": 0.25,
+        "min_history_days": 20,
+        "max_open_gap": 0.05,
+        "max_forecast_jz": 100000000,
+        "exclude_notice_months": [
+          "01",
+          "07"
+        ],
+        "proxy_months": [
+          "03",
+          "04",
+          "08",
+          "10"
+        ],
+        "exclude_name_prefixes": [
+          "*ST",
+          "ST"
+        ],
+        "exclude_name_contains": [
+          "退"
+        ],
+        "position_size": 0.1,
+        "max_per_day": 5
+      },
+      "candidate_count": 23,
+      "selected_signal_count": 23,
+      "executed_trade_count": 23,
+      "metrics": {
+        "start_date": "2024-02-22",
+        "end_date": "2026-04-20",
+        "trade_count": 23,
+        "total_return": 0.0491133974433251,
+        "annual_return": 0.022472214210081942,
+        "max_drawdown": -0.019659727564649843,
+        "win_rate": 0.5652173913043478,
+        "avg_trade_return": 0.021126086643530315,
+        "median_trade_return": 0.03523245055546864,
+        "avg_win": 0.0773718496583838,
+        "avg_loss": -0.05199340527577921,
+        "profit_factor": 1.9345415831564134,
+        "hs300_return": 0.3644652347368691,
+        "excess_vs_hs300": -0.315351837293544
+      }
+    },
+    "event_labeled_pre10d": {
+      "kind": "event_labeled_upper_bound_not_directly_tradable",
+      "config": {
+        "min_event_score": 96,
+        "pre_entry_days": 10,
+        "post_notice_hold_days": 1,
+        "proxy_hold_days": 5,
+        "stop_loss": 0.05,
+        "take_profit": 0.12,
+        "min_pre_5d_return": 0.02,
+        "min_pre_10d_excess": 0.01,
+        "max_pre_20d_return": 0.25,
+        "min_history_days": 20,
+        "max_open_gap": 0.05,
+        "max_forecast_jz": 100000000,
+        "exclude_notice_months": [
+          "01",
+          "07"
+        ],
+        "proxy_months": [
+          "03",
+          "04",
+          "08",
+          "10"
+        ],
+        "exclude_name_prefixes": [
+          "*ST",
+          "ST"
+        ],
+        "exclude_name_contains": [
+          "退"
+        ],
+        "position_size": 0.1,
+        "max_per_day": 5
+      },
+      "candidate_count": 15,
+      "selected_signal_count": 15,
+      "executed_trade_count": 15,
+      "metrics": {
+        "start_date": "2024-02-27",
+        "end_date": "2026-04-23",
+        "trade_count": 15,
+        "total_return": 0.030043206791384724,
+        "annual_return": 0.013850349760721192,
+        "max_drawdown": -0.010371647913234083,
+        "win_rate": 0.4666666666666667,
+        "avg_trade_return": 0.020007995672762974,
+        "median_trade_return": -0.0007485287301064458,
+        "avg_win": 0.09497461439314361,
+        "avg_loss": -0.045587795707570086,
+        "profit_factor": 1.8229174344615444,
+        "hs300_return": 0.3695615473318854,
+        "excess_vs_hs300": -0.3395183405405007
+      }
+    },
+    "calendar_proxy_baseline": {
+      "kind": "deployable_proxy_no_future_event_label",
+      "config": {
+        "min_event_score": 96,
+        "pre_entry_days": 5,
+        "post_notice_hold_days": 1,
+        "proxy_hold_days": 5,
+        "stop_loss": 0.05,
+        "take_profit": 0.12,
+        "min_pre_5d_return": 0.02,
+        "min_pre_10d_excess": 0.01,
+        "max_pre_20d_return": 0.25,
+        "min_history_days": 20,
+        "max_open_gap": 0.05,
+        "max_forecast_jz": 100000000,
+        "exclude_notice_months": [
+          "01",
+          "07"
+        ],
+        "proxy_months": [
+          "03",
+          "04",
+          "08",
+          "10"
+        ],
+        "exclude_name_prefixes": [
+          "*ST",
+          "ST"
+        ],
+        "exclude_name_contains": [
+          "退"
+        ],
+        "position_size": 0.1,
+        "max_per_day": 5
+      },
+      "candidate_count": 40131,
+      "selected_signal_count": 1017,
+      "executed_trade_count": 906,
+      "metrics": {
+        "start_date": "2024-03-04",
+        "end_date": "2026-05-12",
+        "trade_count": 906,
+        "total_return": 0.02766696366323007,
+        "annual_return": 0.012553856269112984,
+        "max_drawdown": -0.22677169319260282,
+        "win_rate": 0.36423841059602646,
+        "avg_trade_return": 0.0009156393036155931,
+        "median_trade_return": -0.051993405275779114,
+        "avg_win": 0.08582129123504102,
+        "avg_loss": -0.047728223782096894,
+        "profit_factor": 1.0301755273334154,
+        "hs300_return": 0.397410805818909,
+        "excess_vs_hs300": -0.3697438421556789
+      }
+    },
+    "calendar_proxy_grid_best": {
+      "kind": "deployable_proxy_no_future_event_label",
+      "config": {
+        "min_event_score": 96,
+        "pre_entry_days": 5,
+        "post_notice_hold_days": 1,
+        "proxy_hold_days": 10,
+        "stop_loss": 0.04,
+        "take_profit": 0.12,
+        "min_pre_5d_return": 0.04,
+        "min_pre_10d_excess": 0.02,
+        "max_pre_20d_return": 0.25,
+        "min_history_days": 20,
+        "max_open_gap": 0.05,
+        "max_forecast_jz": 100000000,
+        "exclude_notice_months": [
+          "01",
+          "07"
+        ],
+        "proxy_months": [
+          "03",
+          "04",
+          "08",
+          "10"
+        ],
+        "exclude_name_prefixes": [
+          "*ST",
+          "ST"
+        ],
+        "exclude_name_contains": [
+          "退"
+        ],
+        "position_size": 0.1,
+        "max_per_day": 5
+      },
+      "candidate_count": 26654,
+      "selected_signal_count": 1016,
+      "executed_trade_count": 869,
+      "metrics": {
+        "start_date": "2024-03-04",
+        "end_date": "2026-05-19",
+        "trade_count": 869,
+        "total_return": 0.6333174713039791,
+        "annual_return": 0.24898113932520727,
+        "max_drawdown": -0.18691796453626108,
+        "win_rate": 0.3302646720368239,
+        "avg_trade_return": 0.007306663250605072,
+        "median_trade_return": -0.042014388489208354,
+        "avg_win": 0.10610816500572207,
+        "avg_loss": -0.04141503950492513,
+        "profit_factor": 1.2634254944455037,
+        "hs300_return": 0.370533230533739,
+        "excess_vs_hs300": 0.2627842407702401
+      }
+    }
+  },
+  "report_dir": "/Users/weifeng/works/finance_lab/reports/pre_expectation_backtest/20260610_184544"
+}

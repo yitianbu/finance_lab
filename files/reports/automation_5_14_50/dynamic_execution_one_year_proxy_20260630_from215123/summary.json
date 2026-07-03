@@ -1,0 +1,72 @@
+{
+  "source_report": "/Users/weifeng/works/finance_lab/reports/automation_5_14_50/two_year_benchmark_gate_20260629_215123",
+  "summary": {
+    "new_dynamic": {
+      "days": 240,
+      "wins": 76,
+      "avg": 0.016701560694199126,
+      "pnl": 12.02512369982337,
+      "return_on_max_capital": 0.8016749133215579,
+      "best": 0.35460735854588094,
+      "worst": -0.17312478061464012,
+      "max_drawdown_on_capital": -0.12627440155320416
+    },
+    "old_rank1": {
+      "days": 240,
+      "wins": 68,
+      "avg": 0.015382427797272984,
+      "pnl": 11.07534801403655,
+      "return_on_max_capital": 0.7383565342691033,
+      "best": 0.35460735854588094,
+      "worst": -0.20466978353046197,
+      "max_drawdown_on_capital": -0.19562829441627047
+    },
+    "old_top3": {
+      "days": 240,
+      "wins": 72,
+      "avg": 0.013155802215068114,
+      "pnl": 9.472177594849041,
+      "return_on_max_capital": 0.6314785063232694,
+      "best": 0.3531816182179397,
+      "worst": -0.1578386165425897,
+      "max_drawdown_on_capital": -0.10864915467197526
+    },
+    "sh": {
+      "days": 240,
+      "wins": 151,
+      "avg": 0.0035473872513397146,
+      "pnl": 2.554118820964595,
+      "return_on_max_capital": 0.17027458806430631,
+      "best": 0.04171908487860865,
+      "worst": -0.06646853326609192,
+      "max_drawdown_on_capital": -0.06516760688044992
+    },
+    "sz": {
+      "days": 240,
+      "wins": 152,
+      "avg": 0.008949205524495534,
+      "pnl": 6.443427977636784,
+      "return_on_max_capital": 0.4295618651757856,
+      "best": 0.09416904301893747,
+      "worst": -0.06724197942629007,
+      "max_drawdown_on_capital": -0.06696010255620181
+    },
+    "cy": {
+      "days": 240,
+      "wins": 144,
+      "avg": 0.014789742982599953,
+      "pnl": 10.648614947471966,
+      "return_on_max_capital": 0.7099076631647977,
+      "best": 0.13811792656023614,
+      "worst": -0.08709979277395685,
+      "max_drawdown_on_capital": -0.08401288531771775
+    }
+  },
+  "mode_counts": {
+    "top3": 83,
+    "first": 39,
+    "blocked": 118,
+    "attack": 5,
+    "attack_trigger_but_top3": 1
+  }
+}

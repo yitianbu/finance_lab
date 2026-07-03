@@ -1,0 +1,212 @@
+{
+  "run_time": "2026-06-24 21:56:31 CST +0800",
+  "requested_review_date": "2026-06-24",
+  "actual_signal_date": "2026-06-24",
+  "quote_count": 4983,
+  "quote_errors": [],
+  "market": {
+    "scores": [
+      {
+        "date": "2026-06-22",
+        "sh_pct": 1.7753417691811268,
+        "cy_pct": 2.516232048330469,
+        "sz_pct": 2.1321589200721025,
+        "daily_score": 1.9948832551891904
+      },
+      {
+        "date": "2026-06-23",
+        "sh_pct": -1.3655689270015259,
+        "cy_pct": -3.8353989893081586,
+        "sz_pct": -3.165674148724995,
+        "daily_score": -2.2195559838075463
+      },
+      {
+        "date": "2026-06-24",
+        "sh_pct": 0.11105022831050526,
+        "cy_pct": 1.4128653519998036,
+        "sz_pct": 1.2433298431961282,
+        "daily_score": 0.5978691760254895
+      }
+    ],
+    "score_avg3": 0.12439881580237788,
+    "sh_close": 4110.81,
+    "cy_close": 4251.42,
+    "sh_ma20": 4065.5735,
+    "cy_ma20": 4050.7125,
+    "advancers": 1349,
+    "decliners": 3571,
+    "unchanged": 63,
+    "adv_ratio": 0.2707204495283965,
+    "limit_up": 99,
+    "limit_down": 12,
+    "limit_ratio": 8.25,
+    "rsi14": "无法核验（腾讯指数历史接口连续 HTTP 501；只能确认 RSI 阈值分支沿用最近完整值<=70）",
+    "base_vol_ratio": 1.8,
+    "high_distance_threshold": -10.0,
+    "tradable": true,
+    "grade": "strong",
+    "pause_reasons": []
+  },
+  "initial_filter": {
+    "universe": 5248,
+    "valid_quotes": 4983,
+    "initial_count": 476,
+    "st_retire_excluded": 232,
+    "bar_loaded": 0,
+    "bar_errors": 476,
+    "bar_error_examples": {
+      "002897.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002149.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002317.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "688126.SH": "HTTPError: HTTP Error 501: Not Implemented",
+      "002585.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002957.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002407.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002812.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002655.SZ": "HTTPError: HTTP Error 501: Not Implemented",
+      "002600.SZ": "HTTPError: HTTP Error 501: Not Implemented"
+    }
+  },
+  "risk_stats": {
+    "st_retire_excluded": 232,
+    "reduction_excluded": "无法核验",
+    "bad_performance_excluded_in_initial_local_q1": 91,
+    "penalty_investigation_risk_marked": "无法核验"
+  },
+  "cooldown": {
+    "last5": [
+      {
+        "secucode": "600868.SH",
+        "name": "梅雁吉祥",
+        "return": -0.11181212938005394,
+        "exit_date": "2026-06-08"
+      },
+      {
+        "secucode": "002132.SZ",
+        "name": "恒星科技",
+        "return": -0.05075054945054939,
+        "exit_date": "2026-06-12"
+      },
+      {
+        "secucode": "603236.SH",
+        "name": "移远通信",
+        "return": -0.047533766233766296,
+        "exit_date": "2026-06-17"
+      },
+      {
+        "secucode": "601066.SH",
+        "name": "中信建投",
+        "return": 0.06691106821106815,
+        "exit_date": "2026-06-18"
+      },
+      {
+        "secucode": "688219.SH",
+        "name": "会通股份",
+        "return": 0.00030642570281144265,
+        "exit_date": "2026-06-18"
+      }
+    ],
+    "win_rate": 0.4,
+    "avg_return": -0.028575790230098007,
+    "active": true,
+    "only_core_allowed": true,
+    "source": "latest complete balanced_steady backtest through 2026-06-18; 2026-06-24 full backtest failed at Tencent HTTP 501"
+  },
+  "technical_signals": [],
+  "formal_candidates": [],
+  "watchlist": [],
+  "watchlist_total": 0,
+  "holdings": [
+    {
+      "secucode": "300450.SZ",
+      "name": "先导智能",
+      "status": "无法核验当日行情"
+    },
+    {
+      "secucode": "300476.SZ",
+      "name": "胜宏科技",
+      "status": "无法核验当日行情"
+    },
+    {
+      "secucode": "300054.SZ",
+      "name": "鼎龙股份",
+      "status": "无法核验当日行情"
+    },
+    {
+      "secucode": "002475.SZ",
+      "name": "立讯精密",
+      "status": "无法核验当日行情"
+    },
+    {
+      "secucode": "002241.SZ",
+      "name": "歌尔股份",
+      "status": "无法核验当日行情"
+    },
+    {
+      "secucode": "600487.SH",
+      "name": "亨通光电",
+      "status": "无法核验当日行情"
+    }
+  ],
+  "data_notes": [
+    "Tencent full-A backtest failed after 4321 loaded symbols due HTTP 501 on index fetch; no full report output.",
+    "Eastmoney clist initially returned 2026-06-24 data, then remote disconnected; final breadth/quotes use Tencent qt batch endpoint.",
+    "Sector resonance industry ranking and industry 20-day amount ratio unable to verify; formal candidates set empty conservatively."
+  ],
+  "t_plus_1": {
+    "d0_signal_date": "2026-06-24",
+    "d1_buy_date": "2026-06-25",
+    "earliest_sell_date": "2026-06-26"
+  },
+  "candidate_block_reason": "市场过滤通过，但 476 只初筛股票历史 K 线加载均为 HTTP 501，技术条件、D1 保护、板块共振、减持公告无法核验；按规则不编造正式候选。",
+  "holding_quote_check": [
+    {
+      "secucode": "300450.SZ",
+      "name": "先导智能",
+      "close": 45.28,
+      "pct_change": 2.19,
+      "action": "若临时成本 54 元准确，浮亏约 -16.15%，触发硬止损；普通卖出偏好 14:50-15:00。",
+      "missing": "信号日低点、持仓最高点、信号层级缺失，移动止盈/时间止损无法完整核验。"
+    },
+    {
+      "secucode": "300476.SZ",
+      "name": "胜宏科技",
+      "close": 343.43,
+      "pct_change": 1.55,
+      "action": "未触发单日跌幅>5%急跌止损；其他卖出规则无法核验。",
+      "missing": "买入价、信号日低点、持仓最高点、信号层级缺失。"
+    },
+    {
+      "secucode": "300054.SZ",
+      "name": "鼎龙股份",
+      "close": 96.7,
+      "pct_change": 5.91,
+      "action": "未触发急跌止损；延续 2026-06-07 董事高管减持计划风险，按规则需下一交易日卖出或至少降仓。",
+      "missing": "买入价、信号日低点、持仓最高点、信号层级缺失。"
+    },
+    {
+      "secucode": "002475.SZ",
+      "name": "立讯精密",
+      "close": 75.05,
+      "pct_change": 8.2,
+      "action": "未触发急跌止损；若 2026-06-10 -5.52% 急跌提醒未处理，仍需复核。",
+      "missing": "买入价、信号日低点、持仓最高点、信号层级缺失。"
+    },
+    {
+      "secucode": "002241.SZ",
+      "name": "歌尔股份",
+      "close": 23.83,
+      "pct_change": 3.29,
+      "action": "未触发单日跌幅>5%急跌止损；其他卖出规则无法核验。",
+      "missing": "买入价、信号日低点、持仓最高点、信号层级缺失。"
+    },
+    {
+      "secucode": "600487.SH",
+      "name": "亨通光电",
+      "close": 119.02,
+      "pct_change": 1.46,
+      "action": "未触发单日跌幅>5%急跌止损；2026-06-22 买入但成本缺失，硬止损无法核验。",
+      "missing": "买入价、信号日低点、持仓最高点、信号层级缺失。"
+    }
+  ]
+}

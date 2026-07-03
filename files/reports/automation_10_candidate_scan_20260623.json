@@ -1,0 +1,36 @@
+{
+  "initial_count": 211,
+  "results": [
+    {
+      "secucode": "300204.SZ",
+      "name": "舒泰神",
+      "close": 22.6,
+      "open": 20.32,
+      "high": 23.6,
+      "low": 20.12,
+      "pct": 11.22,
+      "amount_yi": 12.78925201,
+      "vol_ratio_quote": 2.67,
+      "close_position": 0.7126436781609196,
+      "upper_shadow_ratio": 0.43859649122806993,
+      "amount_yi_calc": 12.343665563400002,
+      "prev_amount_yi": 5.1374566899000005,
+      "amount_delta_yi": 7.206208873500001,
+      "growth_pct": 140.26802187290593,
+      "ma5_ratio": 2.029772175363449,
+      "ma15_ratio": 2.004855730122822,
+      "close_position_calc": 0.7126436781609196,
+      "upper_shadow_ratio_calc": 0.43859649122806993,
+      "dist60_pct": -35.39165237278444,
+      "dist15_low_pct": 17.21991701244814,
+      "ma20": 22.72,
+      "ma60": 26.637999999999998,
+      "core": false,
+      "steady": false,
+      "common": false,
+      "loose": true
+    }
+  ],
+  "error_count": 0,
+  "errors": []
+}
