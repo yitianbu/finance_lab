@@ -140,6 +140,37 @@
     return strategyOrder.applyStoredOrder(catalog, readStrategyOrder());
   }
 
+  function strategyIdFromUrl() {
+    try {
+      return new URL(window.location.href).searchParams.get("strategy") || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function updateStrategyUrl(strategyId) {
+    if (!strategyId) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("strategy", strategyId);
+      url.hash = "strategy-detail-panel";
+      window.history.pushState(null, "", url);
+    } catch {
+      // If history is unavailable, the visual jump still works.
+    }
+  }
+
+  function scrollToStrategyDetail(behavior = "smooth") {
+    const target = document.getElementById("strategy-detail-panel") || document.querySelector(".strategy-detail-panel");
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior, block: "start" });
+      if (typeof target.focus === "function") {
+        target.focus({ preventScroll: true });
+      }
+    });
+  }
+
   function renderedStrategyIds() {
     return Array.from(strategyListElement.querySelectorAll(".strategy-card"))
       .map((card) => card.dataset.strategyId)
@@ -212,10 +243,9 @@
 
   function selectStrategy(strategyId, shouldScroll) {
     selectedStrategyId = strategyId;
+    if (shouldScroll) updateStrategyUrl(strategyId);
     if (latestDashboard) renderStrategyCatalog(latestDashboard);
-    if (shouldScroll) {
-      document.querySelector(".strategy-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (shouldScroll) scrollToStrategyDetail();
   }
 
   function renderStrategyCatalog(data) {
@@ -232,6 +262,10 @@
       return;
     }
 
+    const urlStrategyId = strategyIdFromUrl();
+    if (!selectedStrategyId && urlStrategyId && catalog.some((item) => item.id === urlStrategyId)) {
+      selectedStrategyId = urlStrategyId;
+    }
     if (!selectedStrategyId || !catalog.some((item) => item.id === selectedStrategyId)) {
       selectedStrategyId = catalog[0].id;
     }
