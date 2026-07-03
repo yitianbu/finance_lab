@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>策略研究网站</title>
-    <link rel="stylesheet" href="styles.css?v=20260703-drag-sort" />
+    <link rel="stylesheet" href="styles.css?v=20260703-user-holdings" />
   </head>
   <body>
     <div class="app-shell" data-api="/api/dashboard" data-file-base="/files">
@@ -118,9 +118,10 @@
 
           <article class="panel table-panel">
             <div class="panel-heading">
-              <span class="section-kicker">Audit</span>
-              <h2>纸面实盘与数据说明</h2>
+              <span class="section-kicker">Holdings</span>
+              <h2>我的持仓股与数据说明</h2>
             </div>
+            <div id="user-holdings"></div>
             <div id="live-trading"></div>
             <div id="data-notes" class="note-list"></div>
             <div id="source-files" class="source-list"></div>
@@ -129,7 +130,8 @@
       </main>
     </div>
 
-    <script src="strategy_order.js?v=20260703-drag-sort"></script>
-    <script src="app.js?v=20260703-drag-sort"></script>
+    <script src="holdings_panel.js?v=20260703-user-holdings"></script>
+    <script src="strategy_order.js?v=20260703-user-holdings"></script>
+    <script src="app.js?v=20260703-user-holdings"></script>
   </body>
 </html>

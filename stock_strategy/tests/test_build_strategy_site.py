@@ -45,6 +45,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertGreaterEqual(result["copied_artifacts"], 4)
             self.assertTrue((output / "index.html").is_file())
             self.assertTrue((output / "app.js").is_file())
+            self.assertTrue((output / "holdings_panel.js").is_file())
             self.assertTrue((output / "strategy_order.js").is_file())
             self.assertTrue((output / "styles.css").is_file())
             self.assertTrue((output / "dashboard.json").is_file())
@@ -53,6 +54,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn('data-api="dashboard.json"', html)
             self.assertIn('data-file-base="files"', html)
             self.assertIn('href="styles.css?v=', html)
+            self.assertIn('src="holdings_panel.js?v=', html)
             self.assertIn('src="strategy_order.js?v=', html)
             self.assertIn('src="app.js?v=', html)
 

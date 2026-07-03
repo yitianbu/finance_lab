@@ -174,9 +174,15 @@ class StrategyDashboardLoader:
         }
 
     def _holdings_alerts(self, automation: dict[str, Any], user_positions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        active_positions = [
+            item
+            for item in user_positions
+            if str(item.get("status") or "").strip() in ("", "holding")
+        ]
+        active_codes = {str(item.get("secucode") or "") for item in active_positions if item.get("secucode")}
         quote_checks = automation.get("holding_quote_check") or []
         if quote_checks:
-            return [
+            checks = [
                 {
                     "secucode": item.get("secucode", ""),
                     "name": item.get("name", ""),
@@ -188,6 +194,12 @@ class StrategyDashboardLoader:
                 for item in quote_checks
                 if isinstance(item, dict)
             ]
+            if active_codes:
+                active_checks = [item for item in checks if item.get("secucode") in active_codes]
+                if active_checks:
+                    return active_checks
+            elif checks:
+                return checks
 
         return [
             {
@@ -198,8 +210,7 @@ class StrategyDashboardLoader:
                 "action": item.get("notes") or "本地持仓，暂无当日行情校验。",
                 "missing": "未找到持仓行情检查结果",
             }
-            for item in user_positions
-            if item.get("status") in ("holding", "")
+            for item in active_positions
         ]
 
     def _hold5_top3(self, summary: dict[str, Any]) -> dict[str, Any]:

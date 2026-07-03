@@ -6,6 +6,7 @@
   const chartCanvas = document.getElementById("market-chart");
   const strategyListElement = document.getElementById("strategy-list");
   const strategyOrder = window.StrategyOrder;
+  const holdingsPanel = window.HoldingsPanel;
   const strategyOrderStorageKey = "finance_lab.strategy_order.v1";
   let latestDashboard = null;
   let selectedStrategyId = "";
@@ -477,6 +478,56 @@
     ]);
   }
 
+  function renderUserHoldings(data) {
+    const target = document.getElementById("user-holdings");
+    if (!target) return;
+    const rows = holdingsPanel ? holdingsPanel.buildUserHoldingRows(data) : [];
+    if (!rows.length) {
+      target.innerHTML = `<div class="empty">暂无当前持仓股。</div>`;
+      return;
+    }
+
+    target.innerHTML = `
+      <div class="user-holding-summary">
+        <span>当前持仓</span>
+        <strong>${rows.length}</strong>
+        <small>来自 data/live_trading/user_positions.csv</small>
+      </div>
+      <div class="user-holding-grid">
+        ${rows
+          .map((row) => {
+            const hasChange = row.pct_change !== undefined && row.pct_change !== null;
+            const changeClass = hasChange ? (Number(row.pct_change) >= 0 ? "up" : "down") : "";
+            return `
+              <article class="user-holding-card">
+                <div class="user-holding-head">
+                  <div>
+                    <strong>${escapeHtml(row.name || "--")}</strong>
+                    <code>${escapeHtml(row.secucode || "--")}</code>
+                  </div>
+                  <span class="price-change ${changeClass}">${hasChange ? `${number(row.pct_change, 2)}%` : "--"}</span>
+                </div>
+                <div class="user-holding-metrics">
+                  <span><small>买入</small><b>${number(row.buy_price, 2)}</b></span>
+                  <span><small>数量</small><b>${text(row.quantity)}</b></span>
+                  <span><small>成本</small><b>${number(row.amount, 2)}</b></span>
+                  <span><small>现价</small><b>${number(row.close, 2)}</b></span>
+                </div>
+                <p>${escapeHtml(row.action)}</p>
+                <dl>
+                  <div><dt>买入日</dt><dd>${escapeHtml(row.buy_date || "--")}</dd></div>
+                  <div><dt>复核日</dt><dd>${escapeHtml(row.check_date || "--")}</dd></div>
+                  <div><dt>最晚退出</dt><dd>${escapeHtml(row.max_exit_date || "--")}</dd></div>
+                </dl>
+                ${row.missing ? `<small class="user-holding-note">${escapeHtml(row.missing)}</small>` : ""}
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
   function renderNotes(data) {
     const notes = data.data_notes || [];
     document.getElementById("data-notes").innerHTML = notes.length
@@ -577,6 +628,7 @@
     renderHold5Top3(data);
     renderHoldings(data);
     renderTrades(data);
+    renderUserHoldings(data);
     renderLiveTrading(data);
     renderNotes(data);
     renderChart(data);

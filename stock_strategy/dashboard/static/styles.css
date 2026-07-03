@@ -711,6 +711,161 @@ main {
   padding: 16px 18px;
 }
 
+.user-holding-summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 16px 18px 8px;
+}
+
+.user-holding-summary span,
+.user-holding-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-holding-summary strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.user-holding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 8px 18px 16px;
+}
+
+.user-holding-card {
+  min-height: 242px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.user-holding-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.user-holding-head strong,
+.user-holding-head code {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.user-holding-head strong {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.user-holding-head code {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.price-change {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.price-change.up {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.price-change.down {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.user-holding-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.user-holding-metrics span {
+  min-height: 46px;
+  padding: 7px;
+  border: 1px solid #e8edf2;
+  border-radius: 8px;
+  background: #f9fbfd;
+  overflow: hidden;
+}
+
+.user-holding-metrics small,
+.user-holding-metrics b {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.user-holding-metrics small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.user-holding-metrics b {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.user-holding-card p {
+  margin: 12px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.user-holding-card dl {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0 0;
+}
+
+.user-holding-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.user-holding-card dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.user-holding-card dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.user-holding-note {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .chart-panel {
   min-height: 366px;
 }
@@ -875,6 +1030,7 @@ main {
   .metric-strip,
   .mini-metric-grid,
   .strategy-flow,
+  .user-holding-grid,
   .detail-grid {
     grid-template-columns: 1fr;
   }

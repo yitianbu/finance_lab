@@ -68,7 +68,7 @@ def build_static_site(base_dir: Path, output_dir: Path, clean: bool = False) -> 
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for filename in ("app.js", "strategy_order.js", "styles.css"):
+    for filename in ("app.js", "holdings_panel.js", "strategy_order.js", "styles.css"):
         shutil.copy2(STATIC_DIR / filename, output_dir / filename)
 
     index_html = rewrite_index((STATIC_DIR / "index.html").read_text("utf-8"))

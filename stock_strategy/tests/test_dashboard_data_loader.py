@@ -201,6 +201,47 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["user_positions"][0]["secucode"], "300450.SZ")
             self.assertNotIn(None, dashboard["user_positions"][0])
 
+    def test_holdings_alerts_prefer_current_user_holdings_over_stale_quote_checks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            write_json(
+                base_dir / "reports" / "automation_10" / "summary_2026-06-24.json",
+                {
+                    "actual_signal_date": "2026-06-24",
+                    "formal_candidates": [],
+                    "holding_quote_check": [
+                        {
+                            "secucode": "300450.SZ",
+                            "name": "先导智能",
+                            "action": "旧持仓检查",
+                        }
+                    ],
+                },
+            )
+            write_csv(
+                base_dir / "data" / "live_trading" / "user_positions.csv",
+                [
+                    {
+                        "secucode": "300450.SZ",
+                        "name": "先导智能",
+                        "status": "closed",
+                        "notes": "已清仓",
+                    },
+                    {
+                        "secucode": "688002.SH",
+                        "name": "睿创微纳",
+                        "status": "holding",
+                        "notes": "当前持仓",
+                    },
+                ],
+            )
+
+            dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
+
+            self.assertEqual(len(dashboard["holdings_alerts"]), 1)
+            self.assertEqual(dashboard["holdings_alerts"][0]["secucode"], "688002.SH")
+            self.assertEqual(dashboard["holdings_alerts"][0]["action"], "当前持仓")
+
     def test_load_dashboard_includes_latest_hold5_top3_strategy(self):
         with tempfile.TemporaryDirectory() as tmp:
             base_dir = Path(tmp)
