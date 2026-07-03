@@ -51,8 +51,8 @@ class BuildStrategySiteTests(unittest.TestCase):
             html = (output / "index.html").read_text("utf-8")
             self.assertIn('data-api="dashboard.json"', html)
             self.assertIn('data-file-base="files"', html)
-            self.assertIn('href="styles.css"', html)
-            self.assertIn('src="app.js"', html)
+            self.assertIn('href="styles.css?v=', html)
+            self.assertIn('src="app.js?v=', html)
 
             payload = json.loads((output / "dashboard.json").read_text("utf-8"))
             self.assertEqual(payload["report_date"], "2026-06-24")
