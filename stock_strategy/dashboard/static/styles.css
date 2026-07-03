@@ -189,6 +189,7 @@ main {
   background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
   color: var(--text);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(28, 43, 58, 0.05);
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
