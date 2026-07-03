@@ -259,26 +259,41 @@ main {
 }
 
 .strategy-flow span {
-  min-height: 70px;
+  min-height: 62px;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #ffffff;
-  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .strategy-flow small {
   display: block;
-  width: 24px;
-  height: 24px;
-  margin-bottom: 8px;
+  width: 18px;
+  height: 18px;
+  margin-bottom: 7px;
   border-radius: 50%;
   background: var(--blue);
   color: #fff;
-  font-size: 12px;
-  line-height: 24px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 18px;
   text-align: center;
+}
+
+.strategy-flow strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.strategy-flow em {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
 }
 
 .mini-metric-grid {

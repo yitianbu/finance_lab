@@ -156,8 +156,20 @@
     const metrics = (selected.metrics || [])
       .map((item) => `<div class="mini-metric"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`)
       .join("");
+    const workflowNotes = new Map(
+      (selected.workflow_notes || []).map((item) => [item.label, item.description])
+    );
     const workflow = (selected.workflow || [])
-      .map((item, index) => `<span><small>${index + 1}</small>${escapeHtml(item)}</span>`)
+      .map((item, index) => {
+        const description = workflowNotes.get(item);
+        return `
+          <span>
+            <small>${index + 1}</small>
+            <strong>${escapeHtml(item)}</strong>
+            ${description ? `<em>${escapeHtml(description)}</em>` : ""}
+          </span>
+        `;
+      })
       .join("");
 
     detailTarget.innerHTML = `
