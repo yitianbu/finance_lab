@@ -355,6 +355,11 @@ main {
   background: #f6f8fa;
 }
 
+.strategy-detail-panel {
+  scroll-margin-top: 16px;
+  outline: none;
+}
+
 .strategy-detail-module {
   border: 1px solid var(--border);
   border-radius: 8px;

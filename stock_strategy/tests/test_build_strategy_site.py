@@ -60,10 +60,13 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn('aria-label="策略模块"', html)
             self.assertIn(">策略模块</h2>", html)
             self.assertNotIn(">策略卡片</h2>", html)
+            self.assertIn('id="strategy-detail-panel"', html)
 
             app_js = (output / "app.js").read_text("utf-8")
             styles = (output / "styles.css").read_text("utf-8")
             self.assertIn('class="strategy-detail-module"', app_js)
+            self.assertIn("scrollToStrategyDetail", app_js)
+            self.assertIn('searchParams.set("strategy"', app_js)
             self.assertIn(".strategy-detail-module", styles)
             self.assertIn("grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));", styles)
 
