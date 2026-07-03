@@ -127,6 +127,24 @@ main {
   margin-top: 24px;
 }
 
+.dashboard-module {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f9fb;
+}
+
+.dashboard-module .dashboard-title {
+  margin: 0;
+}
+
+.dashboard-module .two-column {
+  margin-top: 0;
+}
+
 .strategy-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(96px, 1fr));
@@ -352,8 +370,8 @@ main {
 }
 
 .strategy-detail {
-  padding: 16px;
-  background: #f6f8fa;
+  padding: 0;
+  background: transparent;
 }
 
 .strategy-detail-panel {
