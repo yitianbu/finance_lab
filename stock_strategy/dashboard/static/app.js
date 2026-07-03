@@ -171,8 +171,10 @@
 
   function shouldDropAfter(event, card) {
     const rect = card.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
     const midY = rect.top + rect.height / 2;
-    return event.clientY > midY;
+    const horizontalIntent = Math.abs(event.clientX - midX) > Math.abs(event.clientY - midY);
+    return horizontalIntent ? event.clientX > midX : event.clientY > midY;
   }
 
   function previewDropTarget(card, event) {
@@ -256,24 +258,19 @@
           return `
           <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
             <span class="strategy-card-head">
-              <span class="strategy-card-heading">
-                ${badge(item.status, tone(item.tone))}
-                <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
-              </span>
+              ${badge(item.status, tone(item.tone))}
               <span class="strategy-card-tools">
                 <span class="strategy-card-grip" aria-hidden="true"></span>
                 <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
               </span>
             </span>
-            <span class="strategy-card-body">
-              <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
-              <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
-            </span>
+            <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
+            <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
+            <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
             <span class="strategy-card-meta">
               <span><small>节奏</small><b>${escapeHtml(item.cadence || "--")}</b></span>
               <span><small>信号</small><b>${escapeHtml(String((item.signals || []).length))}</b></span>
               <span><small>输出</small><b>${escapeHtml(String(outputs.length))}</b></span>
-              <span><small>产物</small><b>${escapeHtml(String(artifactCount(item)))}</b></span>
             </span>
             <span class="strategy-card-footer">
               <span>${artifact ? escapeHtml(artifact.label || "最新产物") : "暂无产物"}</span>
@@ -305,27 +302,29 @@
       .join("");
 
     detailTarget.innerHTML = `
-      <div class="strategy-detail-header">
-        <div>
-          <div class="strategy-badges">
-            ${badge(selected.status, tone(selected.tone))}
-            ${badge(selected.mode || "--", "info")}
-            ${badge(selected.cadence || "--", "")}
+      <section class="strategy-detail-module">
+        <div class="strategy-detail-header">
+          <div>
+            <div class="strategy-badges">
+              ${badge(selected.status, tone(selected.tone))}
+              ${badge(selected.mode || "--", "info")}
+              ${badge(selected.cadence || "--", "")}
+            </div>
+            <h2>${escapeHtml(selected.name)}</h2>
+            <p>${escapeHtml(selected.objective)}</p>
           </div>
-          <h2>${escapeHtml(selected.name)}</h2>
-          <p>${escapeHtml(selected.objective)}</p>
         </div>
-      </div>
-      <div class="strategy-flow">${workflow}</div>
-      <div class="mini-metric-grid">${metrics}</div>
-      <div class="detail-grid">
-        ${detailBlock("核心信号", selected.signals)}
-        ${detailBlock("风控边界", selected.risk_controls)}
-        ${detailBlock("输出结果", selected.outputs)}
-        ${detailBlock("限制说明", selected.limits)}
-        ${artifactBlock("报告产物", selected.reports)}
-        ${artifactBlock("代码与文档", [...(selected.scripts || []), ...(selected.docs || [])])}
-      </div>
+        <div class="strategy-flow">${workflow}</div>
+        <div class="mini-metric-grid">${metrics}</div>
+        <div class="detail-grid">
+          ${detailBlock("核心信号", selected.signals)}
+          ${detailBlock("风控边界", selected.risk_controls)}
+          ${detailBlock("输出结果", selected.outputs)}
+          ${detailBlock("限制说明", selected.limits)}
+          ${artifactBlock("报告产物", selected.reports)}
+          ${artifactBlock("代码与文档", [...(selected.scripts || []), ...(selected.docs || [])])}
+        </div>
+      </section>
     `;
 
     if (matrixTarget) matrixTarget.innerHTML = "";

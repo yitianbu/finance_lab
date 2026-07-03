@@ -61,6 +61,12 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn(">策略模块</h2>", html)
             self.assertNotIn(">策略卡片</h2>", html)
 
+            app_js = (output / "app.js").read_text("utf-8")
+            styles = (output / "styles.css").read_text("utf-8")
+            self.assertIn('class="strategy-detail-module"', app_js)
+            self.assertIn(".strategy-detail-module", styles)
+            self.assertIn("grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));", styles)
+
             payload = json.loads((output / "dashboard.json").read_text("utf-8"))
             self.assertEqual(payload["report_date"], "2026-06-24")
             self.assertTrue((output / "files" / "reports" / "automation_5_14_50" / "20260626_145203" / "summary.json").is_file())
