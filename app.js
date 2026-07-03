@@ -160,6 +160,17 @@
     }
   }
 
+  function strategyHref(strategyId) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("strategy", strategyId);
+      url.hash = "strategy-detail-panel";
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return `?strategy=${encodeURIComponent(strategyId)}#strategy-detail-panel`;
+    }
+  }
+
   function scrollToStrategyDetail(behavior = "smooth") {
     const target = document.getElementById("strategy-detail-panel") || document.querySelector(".strategy-detail-panel");
     if (!target) return;
@@ -290,7 +301,7 @@
           const outputs = item.outputs || [];
           const activeClass = item.id === selected.id ? "active" : "";
           return `
-          <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
+          <a class="strategy-card ${activeClass}" href="${escapeHtml(strategyHref(item.id))}" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
             <span class="strategy-card-head">
               ${badge(item.status, tone(item.tone))}
               <span class="strategy-card-tools">
@@ -310,7 +321,7 @@
               <span>${artifact ? escapeHtml(artifact.label || "最新产物") : "暂无产物"}</span>
               <em>查看详情</em>
             </span>
-          </button>
+          </a>
         `;
         }
       )
