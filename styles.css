@@ -477,6 +477,38 @@ main {
   background: #ffffff;
 }
 
+.strategy-detail-deep-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin: 18px 22px 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.strategy-detail-deep {
+  min-width: 0;
+}
+
+.strategy-detail-deep h3 {
+  margin: 0 0 8px;
+  color: #253241;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.strategy-detail-deep ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.strategy-detail-deep li {
+  margin: 8px 0;
+  color: var(--muted);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1033,6 +1065,7 @@ main {
 
   .metric-strip,
   .mini-metric-grid,
+  .strategy-detail-deep-grid,
   .strategy-flow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1066,6 +1099,7 @@ main {
   .mini-metric-grid,
   .strategy-card-meta,
   .strategy-flow,
+  .strategy-detail-deep-grid,
   .user-holding-grid,
   .user-holding-metrics,
   .detail-grid {

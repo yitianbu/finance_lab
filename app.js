@@ -86,6 +86,21 @@
     `;
   }
 
+  function detailSection(section) {
+    if (!section || !section.title) return "";
+    const rows = (section.items || []).filter(Boolean);
+    return `
+      <article class="strategy-detail-deep">
+        <h3>${escapeHtml(section.title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </article>
+    `;
+  }
+
   function artifactBlock(title, items) {
     const rows = (items || []).filter(Boolean);
     return `
@@ -345,6 +360,7 @@
         `;
       })
       .join("");
+    const detailSections = (selected.detail_sections || []).map(detailSection).filter(Boolean).join("");
 
     detailTarget.innerHTML = `
       <section class="strategy-detail-module">
@@ -361,6 +377,7 @@
         </div>
         <div class="strategy-flow">${workflow}</div>
         <div class="mini-metric-grid">${metrics}</div>
+        ${detailSections ? `<div class="strategy-detail-deep-grid">${detailSections}</div>` : ""}
         <div class="detail-grid">
           ${detailBlock("核心信号", selected.signals)}
           ${detailBlock("风控边界", selected.risk_controls)}
