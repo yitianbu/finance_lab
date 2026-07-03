@@ -151,6 +151,9 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["holdings_alerts"][0]["secucode"], "300450.SZ")
             self.assertEqual(dashboard["live_trading"]["trade_date"], "2026-06-21")
             self.assertIn("automation_summary", dashboard["source_files"])
+            self.assertGreaterEqual(len(dashboard["strategy_catalog"]), 6)
+            self.assertIn("hold5-tail", {item["id"] for item in dashboard["strategy_catalog"]})
+            self.assertIn("ten-billion-turnover", {item["id"] for item in dashboard["strategy_catalog"]})
 
     def test_load_dashboard_handles_missing_and_empty_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -175,6 +178,7 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["market_states"], [])
             self.assertEqual(dashboard["holdings_alerts"], [])
             self.assertIn("未找到最新回测摘要", dashboard["data_notes"])
+            self.assertEqual(dashboard["strategy_catalog"][0]["name"], "14:50 尾盘5日持有")
 
     def test_load_dashboard_ignores_csv_extra_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -231,6 +235,13 @@ class DashboardDataLoaderTests(unittest.TestCase):
                     "watch": [{"secucode": "300975.SZ", "name": "商络电子"}],
                 },
             )
+            write_json(
+                base_dir / "reports" / "automation_5_14_50" / "position_review_20260627_150000" / "summary.json",
+                {
+                    "latest_date": "2026-06-27",
+                    "position_reviews": [{"secucode": "000001.SZ"}],
+                },
+            )
 
             dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
 
@@ -242,6 +253,8 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual([item["name"] for item in hold5["picks"]], ["兆易创新", "德明利", "中国巨石"])
             self.assertEqual(hold5["watch_count"], 1)
             self.assertIn("hold5_top3_summary", dashboard["source_files"])
+            hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
+            self.assertIn("20260626_145203/summary.json", hold5_strategy["reports"][0]["path"])
 
 
 if __name__ == "__main__":

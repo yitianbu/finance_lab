@@ -65,8 +65,44 @@ class DashboardServerTests(unittest.TestCase):
                 thread.join(timeout=3)
 
             self.assertIn("10亿增量策略控制台", html)
+            self.assertIn("策略研究网站", html)
             self.assertIn("5日盈利前三", html)
-            self.assertIn("/api/dashboard", html)
+            self.assertIn('data-api="/api/dashboard"', html)
+            self.assertIn('data-file-base="/files"', html)
+
+    def test_files_route_serves_workspace_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            report = base_dir / "reports" / "demo" / "report.md"
+            report.parent.mkdir(parents=True)
+            report.write_text("# 策略报告\n", "utf-8")
+            script = base_dir / "scripts" / "demo.py"
+            script.parent.mkdir(parents=True)
+            script.write_text("print('ok')\n", "utf-8")
+            (base_dir / "reports" / "automation_10").mkdir(parents=True)
+            (base_dir / "reports" / "automation_10" / "summary_2026-06-24.json").write_text(
+                '{"actual_signal_date":"2026-06-24"}',
+                "utf-8",
+            )
+            server = create_server("127.0.0.1", 0, base_dir)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                with urlopen(f"http://127.0.0.1:{server.server_port}/files/reports/demo/report.md", timeout=3) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), "text/markdown")
+                    body = response.read().decode("utf-8")
+                with urlopen(f"http://127.0.0.1:{server.server_port}/files/scripts/demo.py", timeout=3) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), "text/plain")
+                    script_body = response.read().decode("utf-8")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+
+            self.assertIn("策略报告", body)
+            self.assertIn("print('ok')", script_body)
 
     def test_server_rejects_path_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:

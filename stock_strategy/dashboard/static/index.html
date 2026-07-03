@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>10亿增量策略控制台</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <title>策略研究网站</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell" data-api="/api/dashboard">
+    <div class="app-shell" data-api="/api/dashboard" data-file-base="/files">
       <header class="topbar">
         <div>
-          <p class="eyebrow">本地模式</p>
-          <h1>10亿增量策略控制台</h1>
+          <p class="eyebrow">本地研究站</p>
+          <h1>策略研究网站</h1>
         </div>
         <div class="topbar-meta">
           <span id="report-date">最新本地报告日：--</span>
@@ -21,6 +21,43 @@
       </header>
 
       <main>
+        <section class="strategy-hero" aria-label="策略总览">
+          <div>
+            <p class="eyebrow">Strategy Library</p>
+            <h2>工程策略总览</h2>
+          </div>
+          <div id="strategy-stats" class="strategy-stats"></div>
+        </section>
+
+        <section class="strategy-workbench" aria-label="策略详情">
+          <nav class="panel strategy-nav" aria-label="策略列表">
+            <div class="panel-heading">
+              <span class="section-kicker">Catalog</span>
+              <h2>策略列表</h2>
+            </div>
+            <div id="strategy-list" class="strategy-list"></div>
+          </nav>
+
+          <article class="panel strategy-detail-panel">
+            <div id="strategy-detail" class="strategy-detail"></div>
+          </article>
+        </section>
+
+        <section class="panel strategy-matrix-panel" aria-label="策略矩阵">
+          <div class="panel-heading">
+            <span class="section-kicker">Matrix</span>
+            <h2>策略矩阵</h2>
+          </div>
+          <div id="strategy-matrix"></div>
+        </section>
+
+        <section class="dashboard-title" aria-label="本地运行数据">
+          <div>
+            <p class="eyebrow">Local Dashboard</p>
+            <h2>10亿增量策略控制台</h2>
+          </div>
+        </section>
+
         <section class="action-grid" aria-label="今日行动面板">
           <article class="panel action-panel">
             <div class="panel-heading">
@@ -100,6 +137,6 @@
       </main>
     </div>
 
-    <script src="/app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

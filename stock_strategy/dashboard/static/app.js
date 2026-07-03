@@ -1,8 +1,12 @@
 (function () {
-  const apiUrl = document.querySelector(".app-shell").dataset.api;
+  const appShell = document.querySelector(".app-shell");
+  const apiUrl = appShell.dataset.api;
+  const fileBase = appShell.dataset.fileBase || "/files";
   const refreshButton = document.getElementById("refresh-button");
   const chartCanvas = document.getElementById("market-chart");
+  const strategyListElement = document.getElementById("strategy-list");
   let latestDashboard = null;
+  let selectedStrategyId = "";
 
   function text(value, fallback = "--") {
     if (value === null || value === undefined || value === "") return fallback;
@@ -39,6 +43,158 @@
 
   function badge(label, tone) {
     return `<span class="badge ${tone || ""}">${escapeHtml(label)}</span>`;
+  }
+
+  function tone(value) {
+    return ["bad", "good", "info", "warn"].includes(value) ? value : "";
+  }
+
+  function fileUrl(path) {
+    const encodedPath = String(path).split("/").map(encodeURIComponent).join("/");
+    const base = fileBase.endsWith("/") ? fileBase.slice(0, -1) : fileBase;
+    return `${base}/${encodedPath}`;
+  }
+
+  function artifactLink(item) {
+    if (!item || !item.path) return `<span class="muted">暂无</span>`;
+    const label = escapeHtml(item.label || item.path);
+    const path = escapeHtml(item.path);
+    const kind = escapeHtml((item.kind || "file").toUpperCase());
+    if (!item.exists) {
+      return `<span class="artifact missing"><span class="artifact-label">${label}<small>${kind}</small></span><code>${path}</code></span>`;
+    }
+    return `<a class="artifact" href="${fileUrl(item.path)}" target="_blank" rel="noreferrer"><span class="artifact-label">${label}<small>${kind}</small></span><code>${path}</code></a>`;
+  }
+
+  function detailBlock(title, items) {
+    const rows = (items || []).filter(Boolean);
+    return `
+      <div class="detail-block">
+        <h3>${escapeHtml(title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </div>
+    `;
+  }
+
+  function artifactBlock(title, items) {
+    const rows = (items || []).filter(Boolean);
+    return `
+      <div class="detail-block artifact-block">
+        <h3>${escapeHtml(title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${artifactLink(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </div>
+    `;
+  }
+
+  function firstExistingArtifact(strategy) {
+    const rows = [
+      ...(strategy.reports || []),
+      ...(strategy.docs || []),
+      ...(strategy.scripts || []),
+    ];
+    return rows.find((item) => item && item.exists && item.path) || rows.find((item) => item && item.path);
+  }
+
+  function renderStrategyCatalog(data) {
+    const catalog = data.strategy_catalog || [];
+    const statsTarget = document.getElementById("strategy-stats");
+    const detailTarget = document.getElementById("strategy-detail");
+    const matrixTarget = document.getElementById("strategy-matrix");
+
+    if (!catalog.length) {
+      statsTarget.innerHTML = "";
+      strategyListElement.innerHTML = `<div class="empty">暂无策略目录。</div>`;
+      detailTarget.innerHTML = `<div class="empty">暂无策略详情。</div>`;
+      matrixTarget.innerHTML = `<div class="empty">暂无策略矩阵。</div>`;
+      return;
+    }
+
+    if (!selectedStrategyId || !catalog.some((item) => item.id === selectedStrategyId)) {
+      selectedStrategyId = catalog[0].id;
+    }
+    const selected = catalog.find((item) => item.id === selectedStrategyId) || catalog[0];
+    const reportCount = catalog.flatMap((item) => item.reports || []).filter((item) => item.exists).length;
+    const productionCount = catalog.filter((item) => item.tone === "good").length;
+    const researchCount = catalog.filter((item) => item.tone === "warn").length;
+
+    statsTarget.innerHTML = [
+      ["策略数量", catalog.length],
+      ["生产/增强", productionCount],
+      ["研究/纸面", researchCount],
+      ["可点产物", reportCount],
+    ]
+      .map(([label, value]) => `<div class="strategy-stat"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+      .join("");
+
+    strategyListElement.innerHTML = catalog
+      .map(
+        (item) => `
+          <button class="strategy-tab ${item.id === selected.id ? "active" : ""}" type="button" data-strategy-id="${escapeHtml(item.id)}">
+            <span>${escapeHtml(item.name)}</span>
+            <small>${escapeHtml(item.status)} · ${escapeHtml(item.cadence)}</small>
+          </button>
+        `
+      )
+      .join("");
+
+    const metrics = (selected.metrics || [])
+      .map((item) => `<div class="mini-metric"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`)
+      .join("");
+    const workflow = (selected.workflow || [])
+      .map((item, index) => `<span><small>${index + 1}</small>${escapeHtml(item)}</span>`)
+      .join("");
+
+    detailTarget.innerHTML = `
+      <div class="strategy-detail-header">
+        <div>
+          <div class="strategy-badges">
+            ${badge(selected.status, tone(selected.tone))}
+            ${badge(selected.mode || "--", "info")}
+            ${badge(selected.cadence || "--", "")}
+          </div>
+          <h2>${escapeHtml(selected.name)}</h2>
+          <p>${escapeHtml(selected.objective)}</p>
+        </div>
+      </div>
+      <div class="strategy-flow">${workflow}</div>
+      <div class="mini-metric-grid">${metrics}</div>
+      <div class="detail-grid">
+        ${detailBlock("核心信号", selected.signals)}
+        ${detailBlock("风控边界", selected.risk_controls)}
+        ${detailBlock("输出结果", selected.outputs)}
+        ${detailBlock("限制说明", selected.limits)}
+        ${artifactBlock("报告产物", selected.reports)}
+        ${artifactBlock("代码与文档", [...(selected.scripts || []), ...(selected.docs || [])])}
+      </div>
+    `;
+
+    const rows = catalog.map((strategy) => ({
+      name: strategy.name,
+      status: strategy.status,
+      tone: strategy.tone,
+      cadence: strategy.cadence,
+      output: (strategy.outputs || []).slice(0, 2).join(" / "),
+      artifact: firstExistingArtifact(strategy),
+    }));
+    matrixTarget.innerHTML = table(
+      [
+        { label: "策略", render: (row) => escapeHtml(row.name) },
+        { label: "状态", render: (row) => badge(row.status, tone(row.tone)) },
+        { label: "节奏", render: (row) => escapeHtml(row.cadence) },
+        { label: "关键输出", render: (row) => escapeHtml(row.output) },
+        { label: "最新产物", render: (row) => artifactLink(row.artifact) },
+      ],
+      rows,
+      "暂无策略矩阵。"
+    );
   }
 
   function setMetricList(elementId, rows) {
@@ -283,6 +439,7 @@
     latestDashboard = data;
     document.getElementById("report-date").textContent = `最新本地报告日：${text(data.report_date)}`;
     document.getElementById("loaded-at").textContent = `读取时间：${new Date(data.loaded_at).toLocaleString("zh-CN")}`;
+    renderStrategyCatalog(data);
     renderActionPanel(data);
     renderMarket(data);
     renderTPlus(data);
@@ -311,6 +468,13 @@
   }
 
   refreshButton.addEventListener("click", loadDashboard);
+  strategyListElement.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target ? target.closest("[data-strategy-id]") : null;
+    if (!button) return;
+    selectedStrategyId = button.dataset.strategyId;
+    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+  });
   window.addEventListener("resize", () => {
     if (latestDashboard) renderChart(latestDashboard);
   });
