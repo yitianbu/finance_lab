@@ -57,6 +57,9 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn('src="holdings_panel.js?v=', html)
             self.assertIn('src="strategy_order.js?v=', html)
             self.assertIn('src="app.js?v=', html)
+            self.assertIn('aria-label="策略模块"', html)
+            self.assertIn(">策略模块</h2>", html)
+            self.assertNotIn(">策略卡片</h2>", html)
 
             payload = json.loads((output / "dashboard.json").read_text("utf-8"))
             self.assertEqual(payload["report_date"], "2026-06-24")

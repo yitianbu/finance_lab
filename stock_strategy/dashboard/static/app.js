@@ -171,10 +171,8 @@
 
   function shouldDropAfter(event, card) {
     const rect = card.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
     const midY = rect.top + rect.height / 2;
-    const horizontalIntent = Math.abs(event.clientX - midX) > Math.abs(event.clientY - midY);
-    return horizontalIntent ? event.clientX > midX : event.clientY > midY;
+    return event.clientY > midY;
   }
 
   function previewDropTarget(card, event) {
@@ -258,19 +256,24 @@
           return `
           <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
             <span class="strategy-card-head">
-              ${badge(item.status, tone(item.tone))}
+              <span class="strategy-card-heading">
+                ${badge(item.status, tone(item.tone))}
+                <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
+              </span>
               <span class="strategy-card-tools">
                 <span class="strategy-card-grip" aria-hidden="true"></span>
                 <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
               </span>
             </span>
-            <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
-            <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
-            <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
+            <span class="strategy-card-body">
+              <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
+              <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
+            </span>
             <span class="strategy-card-meta">
               <span><small>节奏</small><b>${escapeHtml(item.cadence || "--")}</b></span>
               <span><small>信号</small><b>${escapeHtml(String((item.signals || []).length))}</b></span>
               <span><small>输出</small><b>${escapeHtml(String(outputs.length))}</b></span>
+              <span><small>产物</small><b>${escapeHtml(String(artifactCount(item)))}</b></span>
             </span>
             <span class="strategy-card-footer">
               <span>${artifact ? escapeHtml(artifact.label || "最新产物") : "暂无产物"}</span>
