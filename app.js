@@ -5,8 +5,13 @@
   const refreshButton = document.getElementById("refresh-button");
   const chartCanvas = document.getElementById("market-chart");
   const strategyListElement = document.getElementById("strategy-list");
+  const strategyOrder = window.StrategyOrder;
+  const strategyOrderStorageKey = "finance_lab.strategy_order.v1";
   let latestDashboard = null;
   let selectedStrategyId = "";
+  let draggedStrategyId = "";
+  let dragClickGuard = false;
+  let pointerDrag = null;
 
   function text(value, fallback = "--") {
     if (value === null || value === undefined || value === "") return fallback;
@@ -111,6 +116,99 @@
     ].filter((item) => item && item.exists && item.path).length;
   }
 
+  function readStrategyOrder() {
+    try {
+      const value = window.localStorage.getItem(strategyOrderStorageKey);
+      const parsed = value ? JSON.parse(value) : [];
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveStrategyOrder(orderIds) {
+    try {
+      window.localStorage.setItem(strategyOrderStorageKey, JSON.stringify(orderIds));
+    } catch {
+      // Browsers can block localStorage in strict privacy modes; sorting still works until refresh.
+    }
+  }
+
+  function orderedStrategyCatalog(catalog) {
+    if (!strategyOrder) return catalog;
+    return strategyOrder.applyStoredOrder(catalog, readStrategyOrder());
+  }
+
+  function renderedStrategyIds() {
+    return Array.from(strategyListElement.querySelectorAll(".strategy-card"))
+      .map((card) => card.dataset.strategyId)
+      .filter(Boolean);
+  }
+
+  function strategyCardFromEvent(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    return target ? target.closest(".strategy-card") : null;
+  }
+
+  function strategyCardFromPoint(clientX, clientY) {
+    const target = document.elementFromPoint(clientX, clientY);
+    return target ? target.closest(".strategy-card") : null;
+  }
+
+  function strategyCardById(strategyId) {
+    return Array.from(strategyListElement.querySelectorAll(".strategy-card"))
+      .find((card) => card.dataset.strategyId === strategyId);
+  }
+
+  function clearDragMarkers() {
+    strategyListElement.classList.remove("dragging");
+    strategyListElement.querySelectorAll(".strategy-card").forEach((card) => {
+      card.classList.remove("dragging", "drag-before", "drag-after");
+      card.removeAttribute("aria-grabbed");
+    });
+  }
+
+  function shouldDropAfter(event, card) {
+    const rect = card.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const midY = rect.top + rect.height / 2;
+    const horizontalIntent = Math.abs(event.clientX - midX) > Math.abs(event.clientY - midY);
+    return horizontalIntent ? event.clientX > midX : event.clientY > midY;
+  }
+
+  function previewDropTarget(card, event) {
+    clearDragMarkers();
+    strategyListElement.classList.add("dragging");
+    const draggedCard = strategyCardById(draggedStrategyId);
+    draggedCard?.classList.add("dragging");
+    draggedCard?.setAttribute("aria-grabbed", "true");
+    if (!card || card.dataset.strategyId === draggedStrategyId) return;
+    card.classList.add(shouldDropAfter(event, card) ? "drag-after" : "drag-before");
+  }
+
+  function commitDraggedOrder(card, event) {
+    if (!draggedStrategyId || !strategyOrder) return;
+    const targetId = card?.dataset.strategyId || "";
+    const orderIds = renderedStrategyIds();
+    const lastId = orderIds.filter((id) => id !== draggedStrategyId).at(-1);
+    const nextOrder = targetId
+      ? shouldDropAfter(event, card)
+        ? strategyOrder.moveAfter(orderIds, draggedStrategyId, targetId)
+        : strategyOrder.moveBefore(orderIds, draggedStrategyId, targetId)
+      : strategyOrder.moveAfter(orderIds, draggedStrategyId, lastId);
+
+    saveStrategyOrder(nextOrder);
+    guardNextClickAfterDrag();
+    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+  }
+
+  function guardNextClickAfterDrag() {
+    dragClickGuard = true;
+    window.setTimeout(() => {
+      dragClickGuard = false;
+    }, 250);
+  }
+
   function selectStrategy(strategyId, shouldScroll) {
     selectedStrategyId = strategyId;
     if (latestDashboard) renderStrategyCatalog(latestDashboard);
@@ -120,7 +218,7 @@
   }
 
   function renderStrategyCatalog(data) {
-    const catalog = data.strategy_catalog || [];
+    const catalog = orderedStrategyCatalog(data.strategy_catalog || []);
     const statsTarget = document.getElementById("strategy-stats");
     const detailTarget = document.getElementById("strategy-detail");
     const matrixTarget = document.getElementById("strategy-matrix");
@@ -157,10 +255,13 @@
           const outputs = item.outputs || [];
           const activeClass = item.id === selected.id ? "active" : "";
           return `
-          <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}">
+          <button class="strategy-card ${activeClass}" type="button" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
             <span class="strategy-card-head">
               ${badge(item.status, tone(item.tone))}
-              <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
+              <span class="strategy-card-tools">
+                <span class="strategy-card-grip" aria-hidden="true"></span>
+                <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
+              </span>
             </span>
             <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
             <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
@@ -497,12 +598,88 @@
   }
 
   refreshButton.addEventListener("click", loadDashboard);
+  strategyListElement.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const card = strategyCardFromEvent(event);
+    if (!card || !card.dataset.strategyId) return;
+    pointerDrag = {
+      active: false,
+      id: card.dataset.strategyId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    try {
+      strategyListElement.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is best-effort; sorting still works without it.
+    }
+  });
+  document.addEventListener("pointermove", (event) => {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+    const moved = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY);
+    if (!pointerDrag.active && moved < 8) return;
+    event.preventDefault();
+    pointerDrag.active = true;
+    draggedStrategyId = pointerDrag.id;
+    previewDropTarget(strategyCardFromPoint(event.clientX, event.clientY), event);
+  });
+  document.addEventListener("pointerup", (event) => {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+    const wasActive = pointerDrag.active;
+    if (wasActive) {
+      event.preventDefault();
+      commitDraggedOrder(strategyCardFromPoint(event.clientX, event.clientY), event);
+    }
+    pointerDrag = null;
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
+  document.addEventListener("pointercancel", () => {
+    pointerDrag = null;
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
+  strategyListElement.addEventListener("dragstart", (event) => {
+    const card = strategyCardFromEvent(event);
+    if (!card || !card.dataset.strategyId) return;
+    draggedStrategyId = card.dataset.strategyId;
+    card.classList.add("dragging");
+    card.setAttribute("aria-grabbed", "true");
+    strategyListElement.classList.add("dragging");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedStrategyId);
+    }
+  });
+  strategyListElement.addEventListener("dragover", (event) => {
+    if (!draggedStrategyId) return;
+    event.preventDefault();
+    const card = strategyCardFromEvent(event);
+    previewDropTarget(card, event);
+  });
+  strategyListElement.addEventListener("drop", (event) => {
+    if (!draggedStrategyId || !strategyOrder) return;
+    event.preventDefault();
+    const card = strategyCardFromEvent(event);
+    commitDraggedOrder(card, event);
+    clearDragMarkers();
+    draggedStrategyId = "";
+  });
+  strategyListElement.addEventListener("dragend", () => {
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
   document.addEventListener("click", (event) => {
+    if (dragClickGuard) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const target = event.target instanceof Element ? event.target : null;
     const button = target ? target.closest("[data-strategy-id]") : null;
     if (!button) return;
-    const fromMatrix = Boolean(button.closest("#strategy-matrix"));
-    selectStrategy(button.dataset.strategyId, fromMatrix || Boolean(button.closest(".strategy-list")));
+    selectStrategy(button.dataset.strategyId, Boolean(button.closest(".strategy-list")));
   });
   window.addEventListener("resize", () => {
     if (latestDashboard) renderChart(latestDashboard);

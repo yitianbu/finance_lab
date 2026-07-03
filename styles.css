@@ -194,6 +194,15 @@ main {
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
+.strategy-card {
+  cursor: grab;
+}
+
+.strategy-list.dragging .strategy-card {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .strategy-card:hover {
   border-color: #9db4c2;
   box-shadow: 0 14px 28px rgba(28, 43, 58, 0.1);
@@ -206,12 +215,48 @@ main {
   box-shadow: inset 0 4px 0 var(--green), 0 14px 28px rgba(28, 43, 58, 0.1);
 }
 
+.strategy-card.dragging {
+  opacity: 0.48;
+  transform: scale(0.99);
+}
+
+.strategy-card.drag-before,
+.strategy-card.drag-after {
+  border-color: #246a92;
+  box-shadow: 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
+}
+
+.strategy-card.drag-before {
+  box-shadow: inset 4px 0 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
+}
+
+.strategy-card.drag-after {
+  box-shadow: inset -4px 0 0 var(--blue), 0 0 0 2px rgba(36, 106, 146, 0.18), 0 14px 28px rgba(28, 43, 58, 0.1);
+}
+
 .strategy-card-head,
 .strategy-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.strategy-card-tools {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.strategy-card-grip {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background-image: radial-gradient(circle, #8a98a5 1.4px, transparent 1.6px);
+  background-position: 0 0;
+  background-size: 6px 6px;
+  opacity: 0.8;
 }
 
 .strategy-card-count {
