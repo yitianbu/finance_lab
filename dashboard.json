@@ -2,7 +2,7 @@
   "strategy_name": "10亿增量策略",
   "mode": "local",
   "report_date": "2026-06-24",
-  "loaded_at": "2026-07-06T15:18:35.049089+00:00",
+  "loaded_at": "2026-07-06T15:22:40.041261+00:00",
   "strategy_catalog": [
     {
       "id": "hold5-tail",
@@ -492,96 +492,6 @@
         {
           "label": "全量推荐",
           "path": "reports/full_announcement_recommendations/2026-06-15/daily_recommendations_fulltext.md",
-          "exists": true,
-          "kind": "md"
-        }
-      ]
-    },
-    {
-      "id": "pre-expectation",
-      "name": "提前预期策略",
-      "status": "研究代理",
-      "tone": "warn",
-      "cadence": "披露高发月份",
-      "mode": "事件标签验证 + 日历代理",
-      "objective": "验证利好事件正式披露前是否存在可交易的资金提前参与，并区分不可实盘的事件标签验证和更接近实盘的日历代理。",
-      "workflow": [
-        "历史强公告标签",
-        "价格相对强度",
-        "拥挤度过滤",
-        "次日开盘",
-        "事件/时间退出"
-      ],
-      "latest_advice": {
-        "label": "最新购买建议",
-        "title": "仅研究观察",
-        "body": "回测截至 2026-06-08，calendar_proxy_grid_best 有 869 笔代理交易；当前未输出今日可买名单。",
-        "tone": "warn"
-      },
-      "signals": [
-        "5日价格已经启动，10日表现强于沪深300。",
-        "20日涨幅不过度拥挤，收盘在10日均线之上。",
-        "事件标签版本只证明现象；日历代理版本不使用未来公告标签。"
-      ],
-      "risk_controls": [
-        "次日高开过多跳过。",
-        "T+1 不允许买入当天卖出。",
-        "日线止盈止损冲突按保守规则处理：止损优先。"
-      ],
-      "outputs": [
-        "event_labeled_preXd",
-        "calendar_proxy_baseline",
-        "calendar_proxy_grid_best"
-      ],
-      "limits": [
-        "可部署版本不能依赖未来事件标签；当前缓存不是完整点位全A宇宙。"
-      ],
-      "metrics": [
-        {
-          "label": "默认止损",
-          "value": "5%"
-        },
-        {
-          "label": "默认止盈",
-          "value": "12%"
-        },
-        {
-          "label": "代理持有",
-          "value": "5 日"
-        }
-      ],
-      "scripts": [
-        {
-          "label": "提前预期回测",
-          "path": "stock_strategy/pre_expectation_backtest.py",
-          "exists": true,
-          "kind": "py"
-        },
-        {
-          "label": "参数搜索",
-          "path": "scripts/stock_strategy/search_pre_expectation_params.py",
-          "exists": true,
-          "kind": "py"
-        }
-      ],
-      "docs": [
-        {
-          "label": "策略设计",
-          "path": "docs/superpowers/specs/2026-06-10-pre-expectation-strategy-design.md",
-          "exists": true,
-          "kind": "md"
-        }
-      ],
-      "reports": [
-        {
-          "label": "最新回测摘要",
-          "path": "reports/pre_expectation_backtest/20260610_184544/summary.json",
-          "exists": true,
-          "kind": "json"
-        },
-        {
-          "label": "最新回测报告",
-          "path": "reports/pre_expectation_backtest/20260610_184544/report.md",
           "exists": true,
           "kind": "md"
         }
@@ -8391,7 +8301,6 @@
     "hold5_top3_summary": "reports/automation_5_14_50/20260706_152500/summary.json",
     "long_term_hold_scan": "reports/long_term_hold/20260706_194319/long_term_hold_scan.json",
     "long_term_hold_daily": "reports/long_term_hold/automation_2_daily_20260706_194319/summary.json",
-    "pre_expectation_summary": "reports/pre_expectation_backtest/20260610_184544/summary.json",
     "range_recommendation_review": "reports/range_trader/recommendation_review_20260702.csv",
     "crowding_warning_summary": "reports/crowding_warning/crowding_warning_v2_current_20260703_170300.json"
   }
