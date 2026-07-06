@@ -154,6 +154,7 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertGreaterEqual(len(dashboard["strategy_catalog"]), 6)
             self.assertIn("hold5-tail", {item["id"] for item in dashboard["strategy_catalog"]})
             self.assertIn("ten-billion-turnover", {item["id"] for item in dashboard["strategy_catalog"]})
+            self.assertIn("long-term-hold", {item["id"] for item in dashboard["strategy_catalog"]})
 
     def test_load_dashboard_handles_missing_and_empty_files(self):
         with tempfile.TemporaryDirectory() as tmp:

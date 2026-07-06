@@ -41,7 +41,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             output = root / "public"
             result = build_static_site(root, output, clean=True)
 
-            self.assertEqual(result["strategy_count"], 8)
+            self.assertEqual(result["strategy_count"], 9)
             self.assertGreaterEqual(result["copied_artifacts"], 4)
             self.assertTrue((output / "index.html").is_file())
             self.assertTrue((output / "app.js").is_file())
