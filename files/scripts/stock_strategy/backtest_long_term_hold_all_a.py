@@ -45,17 +45,24 @@ class PortfolioBacktestConfig:
     period_start: str
     period_end: str
     max_positions: int = 5
-    max_new_entries_per_day: int = 1
+    max_new_entries_per_day: int = 2
     target_weight: float = 0.20
-    min_rank_score: float = 102.0
+    min_rank_score: float = 102.5
     initial_capital: float = 1.0
+    dynamic_position_sizing: bool = False
+    mid_rank_score: float = 103.0
+    mid_target_weight: float = 0.25
+    high_rank_score: float = 104.0
+    high_target_weight: float = 0.30
+    high_max_volatility_120d: float = 0.36
+    high_min_drawdown_120d: float = -0.08
 
 
 @dataclass(frozen=True)
 class MarketTrendGateConfig:
     ma_length: int = 120
     return_lookback: int = 60
-    min_return: float = 0.0
+    min_return: float = 0.02
 
 
 def is_a_share_stock_code(raw_code: str) -> bool:
@@ -218,10 +225,36 @@ def _portfolio_summary(
         "max_new_entries_per_day": config.max_new_entries_per_day,
         "target_weight": config.target_weight,
         "min_rank_score": config.min_rank_score,
+        "dynamic_position_sizing": config.dynamic_position_sizing,
+        "mid_rank_score": config.mid_rank_score,
+        "mid_target_weight": config.mid_target_weight,
+        "high_rank_score": config.high_rank_score,
+        "high_target_weight": config.high_target_weight,
+        "high_max_volatility_120d": config.high_max_volatility_120d,
+        "high_min_drawdown_120d": config.high_min_drawdown_120d,
     }
     if extra:
         summary.update(extra)
     return summary
+
+
+def position_weight_for_event(event: dict[str, Any], config: PortfolioBacktestConfig) -> float:
+    if not config.dynamic_position_sizing:
+        return config.target_weight
+
+    rank_score = _float_value(event, "rank_score")
+    volatility_120d = _float_value(event, "volatility_120d")
+    drawdown_120d = _float_value(event, "drawdown_120d")
+    if (
+        rank_score >= config.high_rank_score
+        and volatility_120d > 0
+        and volatility_120d <= config.high_max_volatility_120d
+        and drawdown_120d >= config.high_min_drawdown_120d
+    ):
+        return config.high_target_weight
+    if rank_score >= config.mid_rank_score:
+        return config.mid_target_weight
+    return config.target_weight
 
 
 def simulate_portfolio(
@@ -290,11 +323,13 @@ def simulate_portfolio(
             if str(event.get("secucode", "")) in held_codes:
                 continue
             equity_now = cash + sum(_float_value(position, "notional") for position in open_positions)
-            notional = min(cash, equity_now * config.target_weight)
+            position_weight = position_weight_for_event(event, config)
+            notional = min(cash, equity_now * position_weight)
             if notional <= 1e-12:
                 break
             position = dict(event)
             position["notional"] = notional
+            position["position_weight"] = position_weight
             cash -= notional
             open_positions.append(position)
             held_codes.add(str(position.get("secucode", "")))
@@ -508,6 +543,13 @@ def write_outputs(
         f"- Execution: max {summary['max_new_entries_per_day']} new entry per day, max {summary['max_positions']} positions, rank >= {summary['min_rank_score']:.2f}",
         f"- Market gate: {summary.get('market_gate', 'off')}; blocked entries: {int(_float_value(summary, 'market_gate_blocked_entries'))}",
     ]
+    if summary.get("dynamic_position_sizing"):
+        lines.append(
+            "- Position sizing: "
+            f"base {summary['target_weight']:.0%}; "
+            f"rank>={summary['mid_rank_score']:.2f} -> {summary['mid_target_weight']:.0%}; "
+            f"rank>={summary['high_rank_score']:.2f} with low volatility/shallow drawdown -> {summary['high_target_weight']:.0%}"
+        )
     stock_names = [str(row.get("name") or row.get("secucode") or "") for row in selected]
     if stock_names:
         lines.append(f"- Stock names: {'、'.join(stock_names)}")
@@ -536,14 +578,23 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--period-start", default="2025-07-02")
     parser.add_argument("--period-end", default="2026-07-01")
     parser.add_argument("--max-positions", type=int, default=5)
-    parser.add_argument("--max-new-entries-per-day", type=int, default=1)
+    parser.add_argument("--max-new-entries-per-day", type=int, default=2)
     parser.add_argument("--target-weight", type=float, default=0.20)
-    parser.add_argument("--min-rank-score", type=float, default=102.0)
+    parser.add_argument("--min-rank-score", type=float, default=102.5)
     parser.add_argument("--initial-capital", type=float, default=1.0)
-    parser.add_argument("--market-gate", action="store_true")
+    parser.add_argument("--market-gate", dest="market_gate", action="store_true", default=True)
+    parser.add_argument("--no-market-gate", dest="market_gate", action="store_false")
     parser.add_argument("--market-gate-ma", type=int, default=120)
     parser.add_argument("--market-gate-return-lookback", type=int, default=60)
-    parser.add_argument("--market-gate-min-return", type=float, default=0.0)
+    parser.add_argument("--market-gate-min-return", type=float, default=0.02)
+    parser.add_argument("--dynamic-position-sizing", dest="dynamic_position_sizing", action="store_true", default=True)
+    parser.add_argument("--no-dynamic-position-sizing", dest="dynamic_position_sizing", action="store_false")
+    parser.add_argument("--mid-rank-score", type=float, default=103.0)
+    parser.add_argument("--mid-target-weight", type=float, default=0.25)
+    parser.add_argument("--high-rank-score", type=float, default=104.0)
+    parser.add_argument("--high-target-weight", type=float, default=0.30)
+    parser.add_argument("--high-max-volatility-120d", type=float, default=0.36)
+    parser.add_argument("--high-min-drawdown-120d", type=float, default=-0.08)
     parser.add_argument("--stock-name-csv", default="")
     parser.add_argument("--output-dir", default="")
     return parser
@@ -563,6 +614,13 @@ def main() -> None:
         target_weight=args.target_weight,
         min_rank_score=args.min_rank_score,
         initial_capital=args.initial_capital,
+        dynamic_position_sizing=args.dynamic_position_sizing,
+        mid_rank_score=args.mid_rank_score,
+        mid_target_weight=args.mid_target_weight,
+        high_rank_score=args.high_rank_score,
+        high_target_weight=args.high_target_weight,
+        high_max_volatility_120d=args.high_max_volatility_120d,
+        high_min_drawdown_120d=args.high_min_drawdown_120d,
     )
     strategy_config = LongTermHoldConfig()
     benchmark_bars = [

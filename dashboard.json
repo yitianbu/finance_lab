@@ -2,7 +2,7 @@
   "strategy_name": "10亿增量策略",
   "mode": "local",
   "report_date": "2026-06-24",
-  "loaded_at": "2026-07-06T14:39:19.535010+00:00",
+  "loaded_at": "2026-07-06T15:03:30.679454+00:00",
   "strategy_catalog": [
     {
       "id": "hold5-tail",
@@ -83,6 +83,12 @@
           ]
         }
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "暂不新开仓",
+        "body": "2026-07-06 策略红灯，无正式候选；进取/观察：源杰科技、德明利、佰维存储。",
+        "tone": "bad"
+      },
       "signals": [
         "旧底层排序：胜率、平均5日收益、利润因子、尾盘位置、成交额、板块共振和主力净额。",
         "30样本强收益状态拦截：平均收益、胜率、相对最强指数超额和滚动最大回撤同时达标。",
@@ -747,6 +753,12 @@
         "低换手买点",
         "持仓卖点"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "暂无正式买入",
+        "body": "2026-07-06 未触发正式买入；观察 4 只：药明康德、益生股份、比音勒芬；原因：rank_score_below_102。",
+        "tone": "warn"
+      },
       "signals": [
         "收盘价在 MA200 上方，且 MA60 > MA120 > MA200。",
         "120日和240日收益均要求跑赢基准，默认基准为沪深300 `000300.SH`。",
@@ -8334,6 +8346,8 @@
     "backtest_market_states": "reports/backtest_10b/20260201_20260618_20260618_171852/market_states.csv",
     "user_positions": "data/live_trading/user_positions.csv",
     "live_trading_summary": "reports/live_trading/2026-06-21/summary.json",
-    "hold5_top3_summary": "reports/automation_5_14_50/20260706_152500/summary.json"
+    "hold5_top3_summary": "reports/automation_5_14_50/20260706_152500/summary.json",
+    "long_term_hold_scan": "reports/long_term_hold/20260706_194319/long_term_hold_scan.json",
+    "long_term_hold_daily": "reports/long_term_hold/automation_2_daily_20260706_194319/summary.json"
   }
 }
