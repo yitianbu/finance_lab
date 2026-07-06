@@ -55,8 +55,6 @@ class StrategyDashboardLoader:
         long_term_scan = self._read_json(long_term_scan_path, "long_term_hold_scan") if long_term_scan_path else {}
         long_term_daily_path = self._latest_long_term_daily_summary_path()
         long_term_daily = self._read_json(long_term_daily_path, "long_term_hold_daily") if long_term_daily_path else {}
-        pre_expectation_path = self._latest_by_mtime(self.reports_dir / "pre_expectation_backtest", "summary.json")
-        pre_expectation = self._read_json(pre_expectation_path, "pre_expectation_summary") if pre_expectation_path else {}
         range_review_path = self._latest_by_mtime(self.reports_dir / "range_trader", "recommendation_review_*.csv")
         range_review = self._read_csv(range_review_path, "range_recommendation_review") if range_review_path else []
         crowding_path = self._latest_by_mtime(self.reports_dir / "crowding_warning", "crowding_warning_v2_current_*.json")
@@ -78,7 +76,6 @@ class StrategyDashboardLoader:
                 automation,
                 candidate_scan,
                 live_trading,
-                pre_expectation,
                 range_review,
                 crowding,
             ),
@@ -279,7 +276,6 @@ class StrategyDashboardLoader:
         automation: dict[str, Any] | None = None,
         candidate_scan: dict[str, Any] | None = None,
         live_trading: dict[str, Any] | None = None,
-        pre_expectation: dict[str, Any] | None = None,
         range_review: list[dict[str, Any]] | None = None,
         crowding: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
@@ -457,45 +453,6 @@ class StrategyDashboardLoader:
                     self._latest_artifact("公告回测报告", "reports/announcement_backtest", "report.md"),
                     self._latest_artifact("训练报告", "reports/announcement_backtest_training", "report.md"),
                     self._latest_artifact("全量推荐", "reports/full_announcement_recommendations", "*.md"),
-                ],
-            },
-            {
-                "id": "pre-expectation",
-                "name": "提前预期策略",
-                "status": "研究代理",
-                "tone": "warn",
-                "cadence": "披露高发月份",
-                "mode": "事件标签验证 + 日历代理",
-                "objective": "验证利好事件正式披露前是否存在可交易的资金提前参与，并区分不可实盘的事件标签验证和更接近实盘的日历代理。",
-                "workflow": ["历史强公告标签", "价格相对强度", "拥挤度过滤", "次日开盘", "事件/时间退出"],
-                "latest_advice": self._pre_expectation_latest_advice(pre_expectation or {}),
-                "signals": [
-                    "5日价格已经启动，10日表现强于沪深300。",
-                    "20日涨幅不过度拥挤，收盘在10日均线之上。",
-                    "事件标签版本只证明现象；日历代理版本不使用未来公告标签。",
-                ],
-                "risk_controls": [
-                    "次日高开过多跳过。",
-                    "T+1 不允许买入当天卖出。",
-                    "日线止盈止损冲突按保守规则处理：止损优先。",
-                ],
-                "outputs": ["event_labeled_preXd", "calendar_proxy_baseline", "calendar_proxy_grid_best"],
-                "limits": ["可部署版本不能依赖未来事件标签；当前缓存不是完整点位全A宇宙。"],
-                "metrics": [
-                    {"label": "默认止损", "value": "5%"},
-                    {"label": "默认止盈", "value": "12%"},
-                    {"label": "代理持有", "value": "5 日"},
-                ],
-                "scripts": [
-                    self._artifact("提前预期回测", "stock_strategy/pre_expectation_backtest.py"),
-                    self._artifact("参数搜索", "scripts/stock_strategy/search_pre_expectation_params.py"),
-                ],
-                "docs": [
-                    self._artifact("策略设计", "docs/superpowers/specs/2026-06-10-pre-expectation-strategy-design.md"),
-                ],
-                "reports": [
-                    self._latest_artifact("最新回测摘要", "reports/pre_expectation_backtest", "summary.json"),
-                    self._latest_artifact("最新回测报告", "reports/pre_expectation_backtest", "report.md"),
                 ],
             },
             {
@@ -790,27 +747,6 @@ class StrategyDashboardLoader:
             "warn",
         )
 
-    def _pre_expectation_latest_advice(self, summary: dict[str, Any]) -> dict[str, str]:
-        end_date = summary.get("end_date") or self._date_from_timestamp(summary.get("generated_at")) or "--"
-        variants = summary.get("variants") if isinstance(summary.get("variants"), dict) else {}
-        proxy_name = "calendar_proxy_grid_best" if "calendar_proxy_grid_best" in variants else ""
-        if not proxy_name:
-            proxy_name = next((name for name in variants if str(name).startswith("calendar_proxy")), "")
-        if proxy_name:
-            variant = variants.get(proxy_name) if isinstance(variants.get(proxy_name), dict) else {}
-            metrics = variant.get("metrics") if isinstance(variant.get("metrics"), dict) else {}
-            trade_count = self._display_count(metrics.get("trade_count"))
-            return self._advice(
-                "仅研究观察",
-                f"回测截至 {end_date}，{proxy_name} 有 {trade_count} 笔代理交易；当前未输出今日可买名单。",
-                "warn",
-            )
-        return self._advice(
-            "仅研究观察",
-            f"回测截至 {end_date}；该策略仍是事件/日历代理验证，不直接作为今日买入。",
-            "warn",
-        )
-
     def _range_trader_latest_advice(self, review_rows: list[dict[str, Any]]) -> dict[str, str]:
         if not review_rows:
             return self._advice(
@@ -936,11 +872,6 @@ class StrategyDashboardLoader:
 
     def _number(self, value: Any, digits: int = 1) -> str:
         return f"{self._float_value(value):.{digits}f}"
-
-    def _date_from_timestamp(self, value: Any) -> str:
-        text = str(value or "")
-        match = re.search(r"\d{4}-\d{2}-\d{2}", text)
-        return match.group(0) if match else ""
 
     def _date_from_path(self, path: Path) -> str:
         text = str(path)

@@ -41,7 +41,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             output = root / "public"
             result = build_static_site(root, output, clean=True)
 
-            self.assertEqual(result["strategy_count"], 9)
+            self.assertEqual(result["strategy_count"], 8)
             self.assertGreaterEqual(result["copied_artifacts"], 4)
             self.assertTrue((output / "index.html").is_file())
             self.assertTrue((output / "app.js").is_file())
@@ -84,6 +84,7 @@ class BuildStrategySiteTests(unittest.TestCase):
 
             payload = json.loads((output / "dashboard.json").read_text("utf-8"))
             self.assertEqual(payload["report_date"], "2026-06-24")
+            self.assertNotIn("pre-expectation", {item["id"] for item in payload["strategy_catalog"]})
             hold5_strategy = next(item for item in payload["strategy_catalog"] if item["id"] == "hold5-tail")
             self.assertIn("detail_sections", hold5_strategy)
             self.assertIn("latest_advice", hold5_strategy)
