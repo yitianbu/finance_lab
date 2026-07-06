@@ -2,7 +2,7 @@
   "strategy_name": "10亿增量策略",
   "mode": "local",
   "report_date": "2026-06-24",
-  "loaded_at": "2026-07-06T15:03:30.679454+00:00",
+  "loaded_at": "2026-07-06T15:18:35.049089+00:00",
   "strategy_catalog": [
     {
       "id": "hold5-tail",
@@ -203,6 +203,12 @@
         "第一名优势判断",
         "执行模式建议"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "跟随尾盘策略暂停",
+        "body": "2026-07-06 尾盘策略红灯，动态执行模式不放行新仓。",
+        "tone": "bad"
+      },
       "signals": [
         "策略状态先行：红灯时不新开仓。",
         "第一名在平均收益、胜率、利润因子、reward/risk 和左尾风险上显著不弱于 Top3 时集中。",
@@ -300,6 +306,12 @@
         "候选输出",
         "组合回测"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "暂不新开仓",
+        "body": "2026-06-24 市场过滤通过，但 476 只初筛股票历史 K 线加载均为 HTTP 501，技术条件、D1 保护、板块共振、减持公告无法核验；按规则不编造正式候选。",
+        "tone": "warn"
+      },
       "signals": [
         "成交额增量和价格行为构成基础候选。",
         "市场状态门使用上涨家数、涨跌停结构、指数状态等信息控制是否交易。",
@@ -393,6 +405,12 @@
         "止盈止损",
         "现金组合模拟"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "暂无公告买入名单",
+        "body": "2026-06-15 最新产物是公告推荐/回测报告，尚未接入今日正式买入名单；需按开盘缺口、止损止盈复核。",
+        "tone": "warn"
+      },
       "signals": [
         "默认 `benchmark_constrained`：分数高、预测净利上限、排除不稳定月份。",
         "公告次一交易日开盘买入，默认持有5日。",
@@ -494,6 +512,12 @@
         "次日开盘",
         "事件/时间退出"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "仅研究观察",
+        "body": "回测截至 2026-06-08，calendar_proxy_grid_best 有 869 笔代理交易；当前未输出今日可买名单。",
+        "tone": "warn"
+      },
       "signals": [
         "5日价格已经启动，10日表现强于沪深300。",
         "20日涨幅不过度拥挤，收盘在10日均线之上。",
@@ -578,6 +602,12 @@
         "交易计划",
         "池内排名"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "按区间复核，不追价",
+        "body": "最新复盘到 2026-07-02；最近信号：巨力索具；只有触达买入区间后才按止损/止盈计划执行。",
+        "tone": "info"
+      },
       "signals": [
         "单股模型输出预测高低点、买入区间、止损止盈和 reward/risk。",
         "股票池扫描只把 BUY_ZONE、交易样本足够、收益为正且回撤可控的标为可交易。",
@@ -673,6 +703,12 @@
         "账本更新",
         "每日报告"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "今日无纸面买入",
+        "body": "2026-06-21 计划订单 0 笔，当前纸面仓位 0.0%；继续等待公告信号。",
+        "tone": "warn"
+      },
       "signals": [
         "默认使用公告策略 `benchmark_constrained` 作为信号源。",
         "账户资金、仓位、黑名单、ST/退市风险和行情新鲜度共同决定是否放行。",
@@ -870,6 +906,12 @@
         "热度/相关性",
         "风险等级"
       ],
+      "latest_advice": {
+        "label": "最新购买建议",
+        "title": "高危，暂停追涨",
+        "body": "2026-07-03 拥挤度为高危，触发：末端冲顶，热度 76.7；新买入需降频或暂停。",
+        "tone": "bad"
+      },
       "workflow_notes": [
         {
           "label": "全A股票池",
@@ -8348,6 +8390,9 @@
     "live_trading_summary": "reports/live_trading/2026-06-21/summary.json",
     "hold5_top3_summary": "reports/automation_5_14_50/20260706_152500/summary.json",
     "long_term_hold_scan": "reports/long_term_hold/20260706_194319/long_term_hold_scan.json",
-    "long_term_hold_daily": "reports/long_term_hold/automation_2_daily_20260706_194319/summary.json"
+    "long_term_hold_daily": "reports/long_term_hold/automation_2_daily_20260706_194319/summary.json",
+    "pre_expectation_summary": "reports/pre_expectation_backtest/20260610_184544/summary.json",
+    "range_recommendation_review": "reports/range_trader/recommendation_review_20260702.csv",
+    "crowding_warning_summary": "reports/crowding_warning/crowding_warning_v2_current_20260703_170300.json"
   }
 }
