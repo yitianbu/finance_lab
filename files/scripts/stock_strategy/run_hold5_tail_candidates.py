@@ -330,6 +330,59 @@ def close_return(bars: list[Bar], start: int, end: int) -> float:
     return safe_div(bars[end].close, bars[start].close, 1.0) - 1.0
 
 
+def percentile_rank(values: list[float], value: float) -> float:
+    if not values:
+        return 0.5
+    below = sum(1 for item in values if item < value)
+    equal = sum(1 for item in values if item == value)
+    return safe_div(below + equal * 0.5, len(values), 0.5)
+
+
+def relative_strength_profile(
+    bars: list[Bar],
+    current_idx: int,
+    *,
+    lookback: int = 20,
+    history: int = 120,
+) -> dict[str, float | str]:
+    if current_idx < lookback or len(bars) <= lookback:
+        return {
+            "ret20": 0.0,
+            "hist_ret20_median": 0.0,
+            "strength_percentile_20d": 0.5,
+            "strength_state": "样本不足",
+        }
+
+    current_return = close_return(bars, current_idx - lookback, current_idx)
+    start = max(lookback, current_idx - history)
+    historical = [
+        close_return(bars, idx - lookback, idx)
+        for idx in range(start, current_idx)
+        if idx - lookback >= 0
+    ]
+    if not historical:
+        return {
+            "ret20": current_return,
+            "hist_ret20_median": 0.0,
+            "strength_percentile_20d": 0.5,
+            "strength_state": "样本不足",
+        }
+
+    strength_percentile = percentile_rank(historical, current_return)
+    if strength_percentile >= 0.65:
+        state = "走强"
+    elif strength_percentile <= 0.35:
+        state = "走弱"
+    else:
+        state = "中性"
+    return {
+        "ret20": current_return,
+        "hist_ret20_median": statistics.median(historical),
+        "strength_percentile_20d": strength_percentile,
+        "strength_state": state,
+    }
+
+
 def feature_vector(bars: list[Bar], idx: int) -> dict[str, float]:
     bar = bars[idx]
     prev = bars[idx - 1] if idx > 0 else bar
@@ -405,6 +458,7 @@ def analyze_quote(
     current_idx = len(bars) - 1
     current = bars[current_idx]
     current_features = feature_vector(bars, current_idx)
+    strength = relative_strength_profile(bars, current_idx)
     start = max(60, current_idx - 185)
     end_idx = current_idx - 6
     analogs: list[tuple[float, int, float, float]] = []
@@ -487,6 +541,10 @@ def analyze_quote(
         "turnover": q.turnover,
         "volume_ratio": q.volume_ratio,
         "main_net": q.main_net,
+        "ret20": strength["ret20"],
+        "hist_ret20_median": strength["hist_ret20_median"],
+        "strength_percentile_20d": strength["strength_percentile_20d"],
+        "strength_state": strength["strength_state"],
         "industry_avg_pct": stats.get("avg_pct", 0.0),
         "industry_adv_ratio": stats.get("adv_ratio", 0.0),
         "industry_amount": stats.get("amount", 0.0),
@@ -524,6 +582,15 @@ def append_reject_reason(row: dict[str, Any], reason: str) -> None:
         existing.append(reason)
     row["reject_reason"] = ";".join(existing)
     row["formal"] = False
+
+
+def apply_required_strength_filter(rows: list[dict[str, Any]], required_state: str = "走强") -> list[dict[str, Any]]:
+    if not required_state:
+        return rows
+    for row in rows:
+        if str(row.get("strength_state") or "") != required_state:
+            append_reject_reason(row, "relative_strength_not_strong")
+    return rows
 
 
 def classify_risk_tier(row: dict[str, Any]) -> str:
@@ -1037,6 +1104,7 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
         f"- 行情日期：{meta['latest_date']}",
         f"- 实时快照时间范围：{meta['quote_time_min']} 至 {meta['quote_time_max']}",
         f"- 候选池：东方财富全A实时快照 {meta['snapshot_count']} 只；硬过滤后 {meta['eligible_count']} 只；按成交额/尾盘位置/行业共振预筛验证 {meta['validated_count']} 只。",
+        f"- 强弱过滤：{'只放行' + meta['require_strength_state'] if meta.get('require_strength_state') else '未启用'}；口径为当前20日收益相对过去最多120个滚动20日收益样本的分位。",
         f"- Top候选轻量复核：复核 {meta.get('recheck_count', 0)} 只；复核剔除/降级 {meta.get('recheck_reject_count', 0)} 只；复核错误 {meta.get('recheck_error_count', 0)} 条。",
         "- 数据限制：使用14:50附近实时快照叠加日线历史验证；未取得逐笔或1分钟尾盘趋势，尾盘承接用当日价格位置做代理。",
         f"- MA5卖出确认：第{meta['exit_check_sessions']}个交易日 {meta['exit_check_date']} 检查；"
@@ -1064,9 +1132,17 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
         "",
         "## 正式核心候选",
     ]
+
+    def strength_text(row: dict[str, Any]) -> str:
+        return (
+            f"{row.get('strength_state', '样本不足')}"
+            f" / 20日{row_float(row, 'ret20'):.2%}"
+            f" / 分位{row_float(row, 'strength_percentile_20d'):.0%}"
+        )
+
     if formal:
-        lines.append("| 排名 | 代码 | 名称 | 建议买入区间/触发价 | 卖出确认 | 止损位 | 5日目标区间 | 5日胜率 | 平均5日收益 | 利润因子 | 最大回撤 | 核心买入理由 | 主要风险 |")
-        lines.append("|---:|---|---|---|---|---:|---|---:|---:|---:|---:|---|---|")
+        lines.append("| 排名 | 代码 | 名称 | 建议买入区间/触发价 | 卖出确认 | 止损位 | 5日目标区间 | 20日强弱 | 5日胜率 | 平均5日收益 | 利润因子 | 最大回撤 | 核心买入理由 | 主要风险 |")
+        lines.append("|---:|---|---|---|---|---:|---|---|---:|---:|---:|---:|---|---|")
         for idx, row in enumerate(formal, 1):
             reason = (
                 f"{row['samples']}个近似样本第5交易日退出胜率{row['win_rate']:.2%}、"
@@ -1081,6 +1157,7 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
                 f"| {idx} | {row['secucode']} | {row['name']} | "
                 f"{row['buy_low']:.2f}-{row['buy_high']:.2f} | {meta['exit_check_date']}检查，盈利站上MA5续持 | "
                 f"{row['stop_loss']:.2f} | {row['target_low']:.2f}-{row['target_high']:.2f} | "
+                f"{strength_text(row)} | "
                 f"{row['win_rate']:.2%} | {row['avg_return']:.2%} | {row['profit_factor']:.2f} | "
                 f"{row['max_drawdown']:.2%} | {reason} | {risk} |"
             )
@@ -1089,8 +1166,8 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
 
     lines.extend(["", "## 进取研究候选"])
     if aggressive:
-        lines.append("| 排名 | 代码 | 名称 | 建议买入区间/触发价 | 卖出确认 | 止损位 | 5日目标区间 | 5日胜率 | 平均5日收益 | 利润因子 | 最大回撤 | 研究理由 | 风险约束 |")
-        lines.append("|---:|---|---|---|---|---:|---|---:|---:|---:|---:|---|---|")
+        lines.append("| 排名 | 代码 | 名称 | 建议买入区间/触发价 | 卖出确认 | 止损位 | 5日目标区间 | 20日强弱 | 5日胜率 | 平均5日收益 | 利润因子 | 最大回撤 | 研究理由 | 风险约束 |")
+        lines.append("|---:|---|---|---|---|---:|---|---|---:|---:|---:|---:|---|---|")
         for idx, row in enumerate(aggressive, 1):
             reason = (
                 f"{row['samples']}个近似样本胜率{row['win_rate']:.2%}、"
@@ -1105,6 +1182,7 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
                 f"| {idx} | {row['secucode']} | {row['name']} | "
                 f"{row['buy_low']:.2f}-{row['buy_high']:.2f} | {meta['exit_check_date']}检查，盈利站上MA5续持 | "
                 f"{row['stop_loss']:.2f} | {row['target_low']:.2f}-{row['target_high']:.2f} | "
+                f"{strength_text(row)} | "
                 f"{row['win_rate']:.2%} | {row['avg_return']:.2%} | {row['profit_factor']:.2f} | "
                 f"{row['max_drawdown']:.2%} | {reason} | {risk} |"
             )
@@ -1113,12 +1191,13 @@ def write_outputs(output_dir: Path, rows: list[dict[str, Any]], errors: list[dic
 
     lines.extend(["", "## 观察名单"])
     if watch:
-        lines.append("| 排名 | 代码 | 名称 | 当前状态 | 需补齐条件才可买 | 5日胜率 | 平均5日收益 | 利润因子 | 缺口/风险 |")
-        lines.append("|---:|---|---|---|---|---:|---:|---:|---|")
+        lines.append("| 排名 | 代码 | 名称 | 当前状态 | 需补齐条件才可买 | 20日强弱 | 5日胜率 | 平均5日收益 | 利润因子 | 缺口/风险 |")
+        lines.append("|---:|---|---|---|---|---|---:|---:|---:|---|")
         for idx, row in enumerate(watch, 1):
             need = "修复：" + (row["reject_reason"] or "等待更好买点")
             lines.append(
                 f"| {idx} | {row['secucode']} | {row['name']} | WATCH | {need} | "
+                f"{strength_text(row)} | "
                 f"{row['win_rate']:.2%} | {row['avg_return']:.2%} | {row['profit_factor']:.2f} | "
                 f"最差{row['worst_return']:.2%}，持中最深{row['worst_hold_drawdown']:.2%} |"
             )
@@ -1147,6 +1226,7 @@ def main() -> None:
     parser.add_argument("--analog-count", type=int, default=120)
     parser.add_argument("--recheck-top", type=int, default=10)
     parser.add_argument("--recent-metrics-json", default="")
+    parser.add_argument("--require-strength-state", default="走强", help="hard filter candidates by strength_state; empty string disables")
     args = parser.parse_args()
 
     base_dir = Path(args.base_dir)
@@ -1213,6 +1293,7 @@ def main() -> None:
             except Exception as exc:  # noqa: BLE001
                 errors.append({"secucode": q.secucode, "name": q.name, "error": str(exc)})
 
+    rows = apply_required_strength_filter(rows, args.require_strength_state)
     rows.sort(key=lambda r: (r["formal"], r["score"]), reverse=True)
     rows, recheck_errors = recheck_top_rows(rows, fetch_light_quotes, args.recheck_top)
     errors.extend(recheck_errors)
@@ -1240,6 +1321,7 @@ def main() -> None:
         "recheck_count": sum(1 for row in rows if row.get("rechecked")),
         "recheck_reject_count": sum(1 for row in rows if row.get("recheck_reject_reason")),
         "recheck_error_count": len(recheck_errors),
+        "require_strength_state": args.require_strength_state,
         "quote_time_min": min([q.timestamp for q in fresh_quotes if q.timestamp] or [generated_at]),
         "quote_time_max": max([q.timestamp for q in fresh_quotes if q.timestamp] or [generated_at]),
         "total_amount": sum(q.amount for q in fresh_quotes),

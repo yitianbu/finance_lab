@@ -33,6 +33,7 @@ from scripts.stock_strategy.run_hold5_tail_candidates import (
     distance,
     max_drawdown,
     mean,
+    relative_strength_profile,
     safe_div,
 )
 
@@ -166,6 +167,7 @@ def analyze_candidate(
         return None
     current = bars[idx]
     current_features = feature_vector(bars, idx)
+    strength = relative_strength_profile(bars, idx)
     start = max(60, idx - 185)
     end_idx = idx - 6
     analogs: list[tuple[float, int, float, float]] = []
@@ -244,6 +246,10 @@ def analyze_candidate(
         "formal": formal,
         "score": score,
         "entry_price": current.close,
+        "ret20": strength["ret20"],
+        "hist_ret20_median": strength["hist_ret20_median"],
+        "strength_percentile_20d": strength["strength_percentile_20d"],
+        "strength_state": strength["strength_state"],
         "win_rate": safe_div(len(wins), len(returns)),
         "avg_return": avg,
         "median_return": med,
@@ -308,12 +314,17 @@ def build_analyzed_export_rows(
     return rows
 
 
-def select_trade_candidates(analyzed: list[dict[str, Any]], limit: int = 3) -> list[dict[str, Any]]:
+def select_trade_candidates(
+    analyzed: list[dict[str, Any]],
+    limit: int = 3,
+    require_strength_state: str = "",
+) -> list[dict[str, Any]]:
     tradeable_tiers = {"核心", "进取"}
     return [
         row
         for row in analyzed
         if str(row.get("tier") or "") in tradeable_tiers and not str(row.get("reject_reason") or "")
+        and (not require_strength_state or str(row.get("strength_state") or "") == require_strength_state)
     ][:limit]
 
 
@@ -636,7 +647,7 @@ def run(args: argparse.Namespace) -> Path:
             if row is not None:
                 analyzed.append(row)
         analyzed.sort(key=lambda row: row["score"], reverse=True)
-        selected = select_trade_candidates(analyzed, limit=3)
+        selected = select_trade_candidates(analyzed, limit=3, require_strength_state=args.require_strength_state)
 
         exit_idx = planned_exit_idx(calendar, day_idx)
         evaluation_date = calendar[exit_idx]
@@ -704,6 +715,7 @@ def run(args: argparse.Namespace) -> Path:
         "max_validate": args.max_validate,
         "analog_count": args.analog_count,
         "save_analyzed_top": args.save_analyzed_top,
+        "require_strength_state": args.require_strength_state,
     }
     write_outputs(output_dir, daily_rows, pick_rows, meta, analyzed_rows)
     (output_dir / "errors.json").write_text(json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -719,6 +731,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-validate", type=int, default=420)
     parser.add_argument("--analog-count", type=int, default=60)
     parser.add_argument("--save-analyzed-top", type=int, default=0, help="write top N analyzed candidates per day for research")
+    parser.add_argument("--require-strength-state", default="", help="only select candidates with this strength_state, e.g. 走强")
     return parser.parse_args()
 
 

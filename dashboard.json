@@ -2,7 +2,7 @@
   "strategy_name": "10亿增量策略",
   "mode": "local",
   "report_date": "2026-06-24",
-  "loaded_at": "2026-07-03T14:30:26.442312+00:00",
+  "loaded_at": "2026-07-06T14:39:19.535010+00:00",
   "strategy_catalog": [
     {
       "id": "hold5-tail",
@@ -61,10 +61,10 @@
         {
           "title": "最新报告怎么看",
           "items": [
-            "最新信号日 2026-07-03；第5个交易日 2026-07-10 做卖出确认，盈利且站上 MA5 时可继续持有。",
-            "候选池硬过滤后 717 只，相似样本验证 417 只；正式候选 1 只，观察 5 只。",
-            "板块共振靠前：贵金属(6.53%, 85%上涨)、航天装备Ⅱ(6.30%, 100%上涨)、电机Ⅱ(5.03%, 92%上涨)、航海装备Ⅱ(4.90%, 100%上涨)、动物保健Ⅱ(4.53%, 100%上涨)",
-            "近期策略状态：均值16.36%、胜率100.00%、最差5.03%、超额15.67%、连续亏损日0；中期样本30批、中期均值5.06%、中期胜率63.33%、中期超额5.46%；最强指数超额3.09%、中期回撤-33.40%；强收益状态参考要求近30批中至少12批、均值>=0.80%、胜率>=50.00%、相对最强指数超额>=-2.50%、回撤>=-65.00%。"
+            "最新信号日 2026-07-06；第5个交易日 2026-07-13 做卖出确认，盈利且站上 MA5 时可继续持有。",
+            "候选池硬过滤后 511 只，相似样本验证 417 只；正式候选 0 只，观察 5 只。",
+            "板块共振靠前：煤炭开采(3.58%, 100%上涨)、养殖业(3.21%, 91%上涨)、农业综合Ⅱ(2.42%, 100%上涨)、银行Ⅱ(2.31%, 100%上涨)、油气开采Ⅱ(1.70%, 60%上涨)",
+            "近期策略状态：均值14.44%、胜率100.00%、最差4.61%、超额13.86%、连续亏损日0；中期样本30批、中期均值4.97%、中期胜率66.67%、中期超额5.30%；最强指数超额2.90%、中期回撤-41.41%；强收益状态参考要求近30批中至少12批、均值>=0.80%、胜率>=50.00%、相对最强指数超额>=-2.50%、回撤>=-65.00%。"
           ]
         },
         {
@@ -164,19 +164,19 @@
       "reports": [
         {
           "label": "最新候选摘要",
-          "path": "reports/automation_5_14_50/20260703_145214/summary.json",
+          "path": "reports/automation_5_14_50/20260706_152500/summary.json",
           "exists": true,
           "kind": "json"
         },
         {
           "label": "最新策略报告",
-          "path": "reports/automation_5_14_50/20260703_145214/report.md",
+          "path": "reports/automation_5_14_50/20260706_152500/report.md",
           "exists": true,
           "kind": "md"
         },
         {
           "label": "最新候选CSV",
-          "path": "reports/automation_5_14_50/20260703_145214/hold5_candidates.csv",
+          "path": "reports/automation_5_14_50/20260706_152500/hold5_candidates.csv",
           "exists": true,
           "kind": "csv"
         }
@@ -634,7 +634,7 @@
       "reports": [
         {
           "label": "股票池扫描报告",
-          "path": "reports/range_trader/all_a_scan/20260703_173143/pool_scan_report.md",
+          "path": "reports/range_trader/all_a_scan/20260706_173205/pool_scan_report.md",
           "exists": true,
           "kind": "md"
         },
@@ -733,6 +733,117 @@
       ]
     },
     {
+      "id": "long-term-hold",
+      "name": "长期持有跑赢大盘",
+      "status": "新增研究",
+      "tone": "info",
+      "cadence": "盘后/周度复核",
+      "mode": "单股长期相对强势",
+      "objective": "寻找长期趋势向上且持续跑赢基准的股票，尽量减少买卖，只在趋势或相对收益恶化时退出。",
+      "workflow": [
+        "日线K线",
+        "长期均线",
+        "相对基准",
+        "低换手买点",
+        "持仓卖点"
+      ],
+      "signals": [
+        "收盘价在 MA200 上方，且 MA60 > MA120 > MA200。",
+        "120日和240日收益均要求跑赢基准，默认基准为沪深300 `000300.SH`。",
+        "回撤、波动率和距离 MA200 的偏离共同过滤过热或失控标的。"
+      ],
+      "risk_controls": [
+        "买点限制在信号收盘价下方3%到上方3%之间，避免追高。",
+        "初始止损取买入价下方12%与 MA200 下方3%中的更高者。",
+        "全A组合回测默认只买 rank >= 102 的高分候选，且每天最多新开1只，避免同日次优候选拖累。",
+        "持有满最短周期后，跌破长期趋势、60日明显跑输基准或浮盈回撤触发卖出。"
+      ],
+      "outputs": [
+        "候选CSV/JSON",
+        "买入区间",
+        "初始止损",
+        "趋势卖点",
+        "相对收益卖点"
+      ],
+      "limits": [
+        "策略目标是用规则筛选长期相对强势，不保证一定盈利或一定跑赢大盘。"
+      ],
+      "metrics": [
+        {
+          "label": "默认基准",
+          "value": "沪深300"
+        },
+        {
+          "label": "核心趋势",
+          "value": "MA60/120/200"
+        },
+        {
+          "label": "组合高分门槛",
+          "value": "rank >= 102"
+        },
+        {
+          "label": "每日新开",
+          "value": "最多 1 只"
+        },
+        {
+          "label": "默认最短持有",
+          "value": "60 日"
+        },
+        {
+          "label": "默认最大持有",
+          "value": "520 日"
+        }
+      ],
+      "scripts": [
+        {
+          "label": "长期持有策略",
+          "path": "stock_strategy/long_term_hold_strategy.py",
+          "exists": true,
+          "kind": "py"
+        },
+        {
+          "label": "候选扫描",
+          "path": "scripts/stock_strategy/run_long_term_hold_candidates.py",
+          "exists": true,
+          "kind": "py"
+        },
+        {
+          "label": "全A组合回测",
+          "path": "scripts/stock_strategy/backtest_long_term_hold_all_a.py",
+          "exists": true,
+          "kind": "py"
+        }
+      ],
+      "docs": [
+        {
+          "label": "README",
+          "path": "README.md",
+          "exists": true,
+          "kind": "md"
+        }
+      ],
+      "reports": [
+        {
+          "label": "最新长期持有报告",
+          "path": "reports/long_term_hold/20260706_194319/long_term_hold_scan_report.md",
+          "exists": true,
+          "kind": "md"
+        },
+        {
+          "label": "最新长期持有JSON",
+          "path": "reports/long_term_hold/20260706_194319/long_term_hold_scan.json",
+          "exists": true,
+          "kind": "json"
+        },
+        {
+          "label": "最新长期持有CSV",
+          "path": "reports/long_term_hold/20260706_194319/long_term_hold_scan.csv",
+          "exists": true,
+          "kind": "csv"
+        }
+      ]
+    },
+    {
       "id": "crowding-warning",
       "name": "拥挤度预警",
       "status": "风险预警",
@@ -821,13 +932,13 @@
       "reports": [
         {
           "label": "最新拥挤度报告",
-          "path": "reports/crowding_warning/crowding_warning_v2_current_20260703_170304.md",
+          "path": "reports/crowding_warning/crowding_warning_v2_current_20260703_170300.md",
           "exists": true,
           "kind": "md"
         },
         {
           "label": "最新拥挤度摘要",
-          "path": "reports/crowding_warning/crowding_warning_v2_current_20260703_170304.json",
+          "path": "reports/crowding_warning/crowding_warning_v2_current_20260703_170300.json",
           "exists": true,
           "kind": "json"
         }
@@ -8199,63 +8310,16 @@
   },
   "hold5_top3": {
     "strategy_name": "5日盈利前三",
-    "generated_at": "2026-07-03T14:52:14+08:00",
-    "latest_date": "2026-07-03",
-    "sell_date": "2026-07-10",
-    "eligible_count": 717,
+    "generated_at": "2026-07-06T15:25:00+08:00",
+    "latest_date": "2026-07-06",
+    "sell_date": "2026-07-13",
+    "eligible_count": 511,
     "validated_count": 417,
-    "adv_ratio": 0.6870787598690545,
-    "top_industries": "贵金属(6.53%, 85%上涨)、航天装备Ⅱ(6.30%, 100%上涨)、电机Ⅱ(5.03%, 92%上涨)、航海装备Ⅱ(4.90%, 100%上涨)、动物保健Ⅱ(4.53%, 100%上涨)",
-    "formal_count": 1,
+    "adv_ratio": 0.34969207082371057,
+    "top_industries": "煤炭开采(3.58%, 100%上涨)、养殖业(3.21%, 91%上涨)、农业综合Ⅱ(2.42%, 100%上涨)、银行Ⅱ(2.31%, 100%上涨)、油气开采Ⅱ(1.70%, 60%上涨)",
+    "formal_count": 0,
     "watch_count": 5,
-    "picks": [
-      {
-        "secucode": "600176.SH",
-        "name": "中国巨石",
-        "industry": "玻璃玻纤",
-        "quote_time": "",
-        "latest_date": "2026-07-03",
-        "price": 70.62,
-        "pct": 0.041299999999999996,
-        "amount": 16208290366.0,
-        "turnover": 5.69,
-        "volume_ratio": 1.09,
-        "main_net": 1322376480.0,
-        "industry_avg_pct": -0.00033333333333333365,
-        "industry_adv_ratio": 0.5333333333333333,
-        "industry_amount": 39043545970.12,
-        "close_pos": 0.5621562156215628,
-        "upper_shadow": 0.43784378437843724,
-        "samples": 120,
-        "win_rate": 0.6666666666666666,
-        "avg_return": 0.052075267340132174,
-        "median_return": 0.03208022707036314,
-        "profit_factor": 4.362868708923998,
-        "max_drawdown": -0.24843507773440154,
-        "worst_return": -0.11722550361079423,
-        "worst_sample_date": "2026-03-12",
-        "worst_hold_drawdown": -0.14217884463202302,
-        "stop_loss": 66.0297,
-        "stop_risk": 0.065,
-        "target_low": 72.88550563570904,
-        "target_high": 76.68171111026616,
-        "reward_risk": 1.3205479184946876,
-        "buy_low": 70.40814,
-        "buy_high": 70.83185999999999,
-        "formal": true,
-        "reject_reason": "",
-        "score": 81.3775697753365,
-        "rechecked": true,
-        "recheck_price": 70.62,
-        "recheck_time": "",
-        "recheck_reject_reason": "",
-        "risk_tier": "核心",
-        "action_tier": "正式核心",
-        "attack_mode_score": 22.170124302631336,
-        "attack_mode_preferred": false,
-        "attack_mode_reason": "attack_checks_failed"
-      }
-    ]
+    "picks": []
   },
   "data_notes": [
     "Tencent full-A backtest failed after 4321 loaded symbols due HTTP 501 on index fetch; no full report output.",
@@ -8270,6 +8334,6 @@
     "backtest_market_states": "reports/backtest_10b/20260201_20260618_20260618_171852/market_states.csv",
     "user_positions": "data/live_trading/user_positions.csv",
     "live_trading_summary": "reports/live_trading/2026-06-21/summary.json",
-    "hold5_top3_summary": "reports/automation_5_14_50/20260703_145214/summary.json"
+    "hold5_top3_summary": "reports/automation_5_14_50/20260706_152500/summary.json"
   }
 }

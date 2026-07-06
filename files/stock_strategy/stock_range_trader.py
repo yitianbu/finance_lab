@@ -257,9 +257,50 @@ def parse_daily_payload(raw_code: str, payload: dict[str, Any]) -> list[DailyBar
     return parse_eastmoney_payload(payload)
 
 
+def _cached_daily_bar(row: dict[str, Any]) -> DailyBar:
+    open_price = as_float(row.get("open"))
+    close = as_float(row.get("close"))
+    high = as_float(row.get("high"))
+    low = as_float(row.get("low"))
+    amount = as_float(row.get("amount"))
+    volume = as_float(row.get("volume"))
+    if volume <= 0 and amount > 0:
+        typical_price = mean([item for item in [open_price, close, high, low] if item > 0])
+        volume = safe_div(amount, typical_price)
+    return DailyBar(
+        trade_date=str(row.get("trade_date") or row.get("date") or ""),
+        open=open_price,
+        close=close,
+        high=high,
+        low=low,
+        volume=volume,
+        amount=amount,
+        pct_change=as_float(row.get("pct_change")),
+        turnover=as_float(row.get("turnover")),
+    )
+
+
+def parse_cached_bars_payload(payload: Any) -> list[DailyBar]:
+    rows: list[Any] | None = None
+    if isinstance(payload, list):
+        rows = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("bars"), list):
+        rows = payload.get("bars")
+    if rows is None:
+        return []
+
+    bars = [_cached_daily_bar(row) for row in rows if isinstance(row, dict)]
+    bars = [bar for bar in bars if bar.trade_date and bar.open > 0 and bar.close > 0 and bar.high > 0 and bar.low > 0]
+    bars.sort(key=lambda item: item.trade_date)
+    return bars
+
+
 def load_bars_from_json(path: Path, raw_code: str = "") -> list[DailyBar]:
     with path.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
+    cached_bars = parse_cached_bars_payload(payload)
+    if cached_bars:
+        return cached_bars
     return parse_daily_payload(raw_code or "000001.SZ", payload)
 
 

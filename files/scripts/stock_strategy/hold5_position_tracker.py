@@ -4,7 +4,7 @@ import argparse
 import csv
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from scripts.stock_strategy.backtest_10b_tencent import DailyBar, fetch_bars
-from scripts.stock_strategy.run_hold5_tail_candidates import ma5_exit_decision, ma5_exit_plan, mean
+from scripts.stock_strategy.run_hold5_tail_candidates import Bar, ma5_exit_decision, ma5_exit_plan, mean, relative_strength_profile
 
 
 POSITION_FIELDS = [
@@ -39,6 +39,11 @@ POSITION_FIELDS = [
 
 def compact_date(value: str) -> str:
     return value.replace("-", "")
+
+
+def review_beg_date(buy_date: str, calendar_days: int = 260) -> str:
+    day = datetime.strptime(buy_date, "%Y-%m-%d").date()
+    return (day - timedelta(days=calendar_days)).strftime("%Y%m%d")
 
 
 def split_secucode(secucode: str) -> tuple[str, str]:
@@ -118,6 +123,22 @@ def ma5_at(bars: list[DailyBar], as_of_date: str) -> float:
     return mean([bar.close for bar in eligible[-5:]])
 
 
+def to_hold5_bar(bar: DailyBar) -> Bar:
+    return Bar(
+        date=bar.trade_date,
+        open=bar.open,
+        close=bar.close,
+        high=bar.high,
+        low=bar.low,
+        volume=0.0,
+        amount=bar.amount,
+        amplitude=0.0,
+        pct=bar.pct_change,
+        change=0.0,
+        turnover=bar.turnover,
+    )
+
+
 def review_position(row: dict[str, str], bars: list[DailyBar], as_of_date: str) -> dict[str, Any]:
     buy_date = str(row.get("buy_date") or "")
     buy_price = float(row.get("buy_price") or 0.0)
@@ -131,11 +152,17 @@ def review_position(row: dict[str, str], bars: list[DailyBar], as_of_date: str) 
             "as_of_date": as_of_date,
             "action": "wait",
             "reason": "missing_price_or_position_data",
+            "ret20": 0.0,
+            "hist_ret20_median": 0.0,
+            "strength_percentile_20d": 0.5,
+            "strength_state": "样本不足",
             "missing": "缺少行情或买入信息",
         }
 
     sessions = held_sessions(sorted_bars, buy_date, current.trade_date)
     ma5 = ma5_at(sorted_bars, current.trade_date)
+    current_idx = max(0, sorted_bars.index(current))
+    strength = relative_strength_profile([to_hold5_bar(bar) for bar in sorted_bars], current_idx)
     decision = ma5_exit_decision(
         entry_price=buy_price,
         close=current.close,
@@ -154,6 +181,10 @@ def review_position(row: dict[str, str], bars: list[DailyBar], as_of_date: str) 
         "check_date": row.get("check_date", ""),
         "max_exit_date": row.get("max_exit_date", ""),
         "net_return": decision["net_return"],
+        "ret20": strength["ret20"],
+        "hist_ret20_median": strength["hist_ret20_median"],
+        "strength_percentile_20d": strength["strength_percentile_20d"],
+        "strength_state": strength["strength_state"],
         "action": decision["action"],
         "reason": decision["reason"],
         "missing": "",
@@ -178,7 +209,7 @@ def review_positions(base_dir: Path, as_of_date: str, timeout: int = 8) -> Path:
     end = compact_date(as_of_date)
     for row in rows:
         try:
-            beg = compact_date(str(row.get("buy_date") or as_of_date))
+            beg = review_beg_date(str(row.get("buy_date") or as_of_date))
             bars = fetch_bars(str(row.get("secucode")), beg, end, timeout=timeout)
             reviews.append(review_position(row, bars, as_of_date))
         except Exception as exc:  # noqa: BLE001 - review should keep other positions inspectable.
@@ -186,7 +217,12 @@ def review_positions(base_dir: Path, as_of_date: str, timeout: int = 8) -> Path:
 
     output_dir = base_dir / "reports" / "automation_5_14_50" / f"position_review_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     output_dir.mkdir(parents=True, exist_ok=True)
-    fields = ["secucode", "name", "buy_date", "buy_price", "as_of_date", "close", "ma5", "held_sessions", "check_date", "max_exit_date", "net_return", "action", "reason", "missing"]
+    fields = [
+        "secucode", "name", "buy_date", "buy_price", "as_of_date", "close", "ma5",
+        "held_sessions", "check_date", "max_exit_date", "net_return", "ret20",
+        "hist_ret20_median", "strength_percentile_20d", "strength_state",
+        "action", "reason", "missing",
+    ]
     with (output_dir / "position_reviews.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -216,6 +252,14 @@ def pct(value: Any) -> str:
         return ""
 
 
+def strength_text(row: dict[str, Any]) -> str:
+    return (
+        f"{row.get('strength_state', '样本不足')}"
+        f" / 20日{pct(row.get('ret20'))}"
+        f" / 分位{pct(row.get('strength_percentile_20d'))}"
+    )
+
+
 def write_report(output_dir: Path, reviews: list[dict[str, Any]], errors: list[dict[str, str]], as_of_date: str) -> None:
     lines = [
         "# 持仓MA5卖出确认",
@@ -225,15 +269,16 @@ def write_report(output_dir: Path, reviews: list[dict[str, Any]], errors: list[d
         f"- 覆盖持仓：{len(reviews)} 条；卖出确认 {sum(1 for row in reviews if row.get('action') == 'sell')} 条；继续持有 {sum(1 for row in reviews if row.get('action') == 'hold')} 条；错误 {len(errors)} 条。",
         "",
         "## 明细",
-        "| 代码 | 名称 | 买入日 | 买入价 | 评估日 | 收盘 | MA5 | 已持有交易日 | 净收益 | 动作 | 原因 |",
-        "|---|---|---|---:|---|---:|---:|---:|---:|---|---|",
+        "| 代码 | 名称 | 买入日 | 买入价 | 评估日 | 收盘 | MA5 | 已持有交易日 | 净收益 | 20日强弱 | 动作 | 原因 |",
+        "|---|---|---|---:|---|---:|---:|---:|---:|---|---|---|",
     ]
     for row in reviews:
         lines.append(
             f"| {row.get('secucode', '')} | {row.get('name', '')} | {row.get('buy_date', '')} | "
             f"{float(row.get('buy_price') or 0.0):.2f} | {row.get('as_of_date', '')} | "
             f"{float(row.get('close') or 0.0):.2f} | {float(row.get('ma5') or 0.0):.2f} | "
-            f"{row.get('held_sessions', '')} | {pct(row.get('net_return'))} | {row.get('action', '')} | {row.get('reason', '')} |"
+            f"{row.get('held_sessions', '')} | {pct(row.get('net_return'))} | {strength_text(row)} | "
+            f"{row.get('action', '')} | {row.get('reason', '')} |"
         )
     if errors:
         lines.extend(["", "## 错误", "| 代码 | 名称 | 原因 |", "|---|---|---|"])
