@@ -135,6 +135,18 @@ class DashboardDataLoaderTests(unittest.TestCase):
                     "rejections": 0,
                 },
             )
+            write_json(
+                base_dir / "reports" / "crowding_warning" / "crowding_warning_v2_current_20260624_170157.json",
+                {
+                    "latest_date": "2026-06-24",
+                    "latest": {
+                        "date": "2026-06-24",
+                        "risk_level": "高危",
+                        "trigger": "末端冲顶",
+                        "watch_score": 76.6,
+                    },
+                },
+            )
 
             dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
 
@@ -153,9 +165,23 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertIn("automation_summary", dashboard["source_files"])
             self.assertGreaterEqual(len(dashboard["strategy_catalog"]), 6)
             hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
-            self.assertIn("ten-billion-turnover", {item["id"] for item in dashboard["strategy_catalog"]})
+            ten_billion_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "ten-billion-turnover")
+            live_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "live-paper-trading")
+            crowding_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "crowding-warning")
             self.assertIn("long-term-hold", {item["id"] for item in dashboard["strategy_catalog"]})
+            for strategy in dashboard["strategy_catalog"]:
+                self.assertIn("latest_advice", strategy, strategy["id"])
+                self.assertEqual(strategy["latest_advice"]["label"], "最新购买建议")
+                self.assertTrue(strategy["latest_advice"]["title"], strategy["id"])
+                self.assertTrue(strategy["latest_advice"]["body"], strategy["id"])
             self.assertIn("latest_advice", hold5_strategy)
+            self.assertEqual(ten_billion_strategy["latest_advice"]["title"], "暂不新开仓")
+            self.assertIn("2026-06-24", ten_billion_strategy["latest_advice"]["body"])
+            self.assertIn("不编造正式候选", ten_billion_strategy["latest_advice"]["body"])
+            self.assertEqual(live_strategy["latest_advice"]["title"], "今日无纸面买入")
+            self.assertIn("2026-06-21", live_strategy["latest_advice"]["body"])
+            self.assertEqual(crowding_strategy["latest_advice"]["title"], "高危，暂停追涨")
+            self.assertIn("末端冲顶", crowding_strategy["latest_advice"]["body"])
 
     def test_load_dashboard_handles_missing_and_empty_files(self):
         with tempfile.TemporaryDirectory() as tmp:

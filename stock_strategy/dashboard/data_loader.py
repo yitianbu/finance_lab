@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,12 @@ class StrategyDashboardLoader:
         long_term_scan = self._read_json(long_term_scan_path, "long_term_hold_scan") if long_term_scan_path else {}
         long_term_daily_path = self._latest_long_term_daily_summary_path()
         long_term_daily = self._read_json(long_term_daily_path, "long_term_hold_daily") if long_term_daily_path else {}
+        pre_expectation_path = self._latest_by_mtime(self.reports_dir / "pre_expectation_backtest", "summary.json")
+        pre_expectation = self._read_json(pre_expectation_path, "pre_expectation_summary") if pre_expectation_path else {}
+        range_review_path = self._latest_by_mtime(self.reports_dir / "range_trader", "recommendation_review_*.csv")
+        range_review = self._read_csv(range_review_path, "range_recommendation_review") if range_review_path else []
+        crowding_path = self._latest_by_mtime(self.reports_dir / "crowding_warning", "crowding_warning_v2_current_*.json")
+        crowding = self._read_json(crowding_path, "crowding_warning_summary") if crowding_path else {}
 
         report_date = self._report_date(automation, automation_path)
         data_notes = list(automation.get("data_notes") or [])
@@ -64,7 +71,17 @@ class StrategyDashboardLoader:
             "mode": "local",
             "report_date": report_date,
             "loaded_at": datetime.now(timezone.utc).isoformat(),
-            "strategy_catalog": self._strategy_catalog(hold5_summary, long_term_scan, long_term_daily),
+            "strategy_catalog": self._strategy_catalog(
+                hold5_summary,
+                long_term_scan,
+                long_term_daily,
+                automation,
+                candidate_scan,
+                live_trading,
+                pre_expectation,
+                range_review,
+                crowding,
+            ),
             "market": self._market(automation),
             "candidate_status": self._candidate_status(automation, candidate_scan),
             "t_plus_1": automation.get("t_plus_1") or {},
@@ -259,6 +276,12 @@ class StrategyDashboardLoader:
         hold5_summary: dict[str, Any] | None = None,
         long_term_scan: dict[str, Any] | None = None,
         long_term_daily: dict[str, Any] | None = None,
+        automation: dict[str, Any] | None = None,
+        candidate_scan: dict[str, Any] | None = None,
+        live_trading: dict[str, Any] | None = None,
+        pre_expectation: dict[str, Any] | None = None,
+        range_review: list[dict[str, Any]] | None = None,
+        crowding: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         return [
             {
@@ -322,6 +345,7 @@ class StrategyDashboardLoader:
                 "mode": "第一名 / Top3 切换",
                 "objective": "在每日固定资金单位约束下，根据策略状态和第一名相对优势，在第一名集中买入与 Top3 等权之间切换。",
                 "workflow": ["近期真实报告", "recent_metrics", "候选质量", "第一名优势判断", "执行模式建议"],
+                "latest_advice": self._hold5_dynamic_latest_advice(hold5_summary or {}),
                 "signals": [
                     "策略状态先行：红灯时不新开仓。",
                     "第一名在平均收益、胜率、利润因子、reward/risk 和左尾风险上显著不弱于 Top3 时集中。",
@@ -362,6 +386,7 @@ class StrategyDashboardLoader:
                 "mode": "全A技术面近似",
                 "objective": "寻找成交额增量、市场状态和风险收益结构较好的短线候选，并用市场状态曲线和回测结果审计。",
                 "workflow": ["全A行情", "增量过滤", "市场状态门", "候选输出", "组合回测"],
+                "latest_advice": self._ten_billion_latest_advice(automation or {}, candidate_scan or {}),
                 "signals": [
                     "成交额增量和价格行为构成基础候选。",
                     "市场状态门使用上涨家数、涨跌停结构、指数状态等信息控制是否交易。",
@@ -401,6 +426,7 @@ class StrategyDashboardLoader:
                 "mode": "事件驱动",
                 "objective": "根据业绩预告质量、公告前涨幅、缺口和风控约束，在公告次一交易日生成可回测交易。",
                 "workflow": ["公告事件", "事件评分", "开盘过滤", "止盈止损", "现金组合模拟"],
+                "latest_advice": self._announcement_latest_advice(),
                 "signals": [
                     "默认 `benchmark_constrained`：分数高、预测净利上限、排除不稳定月份。",
                     "公告次一交易日开盘买入，默认持有5日。",
@@ -442,6 +468,7 @@ class StrategyDashboardLoader:
                 "mode": "事件标签验证 + 日历代理",
                 "objective": "验证利好事件正式披露前是否存在可交易的资金提前参与，并区分不可实盘的事件标签验证和更接近实盘的日历代理。",
                 "workflow": ["历史强公告标签", "价格相对强度", "拥挤度过滤", "次日开盘", "事件/时间退出"],
+                "latest_advice": self._pre_expectation_latest_advice(pre_expectation or {}),
                 "signals": [
                     "5日价格已经启动，10日表现强于沪深300。",
                     "20日涨幅不过度拥挤，收盘在10日均线之上。",
@@ -480,6 +507,7 @@ class StrategyDashboardLoader:
                 "mode": "单股区间预测 + 批量排名",
                 "objective": "用相似历史窗口、ATR 校准和交易计划，为单股或候选池生成次日买入区间与风险收益排序。",
                 "workflow": ["K线缓存", "相似窗口", "ATR区间", "交易计划", "池内排名"],
+                "latest_advice": self._range_trader_latest_advice(range_review or []),
                 "signals": [
                     "单股模型输出预测高低点、买入区间、止损止盈和 reward/risk。",
                     "股票池扫描只把 BUY_ZONE、交易样本足够、收益为正且回撤可控的标为可交易。",
@@ -519,6 +547,7 @@ class StrategyDashboardLoader:
                 "mode": "账户级审计",
                 "objective": "把公告回测策略推进到实盘前流程，生成订单、成交、持仓、资金和风控日报，但不连接券商。",
                 "workflow": ["信号生成", "风控过滤", "纸面订单", "账本更新", "每日报告"],
+                "latest_advice": self._live_paper_latest_advice(live_trading or {}),
                 "signals": [
                     "默认使用公告策略 `benchmark_constrained` 作为信号源。",
                     "账户资金、仓位、黑名单、ST/退市风险和行情新鲜度共同决定是否放行。",
@@ -601,6 +630,7 @@ class StrategyDashboardLoader:
                 "mode": "热门篮子过热/回落监测",
                 "objective": "监测强势股票篮子的趋势压力、量能、相关性和回落特征，为持仓和策略开关提供风险背景。",
                 "workflow": ["全A股票池", "热门篮子", "趋势压力", "热度/相关性", "风险等级"],
+                "latest_advice": self._crowding_latest_advice(crowding or {}),
                 "workflow_notes": [
                     {"label": "全A股票池", "description": "先拉取全市场可交易标的，剔除样本不足、行情缺失或流动性太弱的股票。"},
                     {"label": "热门篮子", "description": "按近期涨幅、成交额和强势程度挑出市场最拥挤的一批股票，作为风险观察对象。"},
@@ -635,6 +665,14 @@ class StrategyDashboardLoader:
                 ],
             },
         ]
+
+    def _advice(self, title: str, body: str, tone: str = "warn", label: str = "最新购买建议") -> dict[str, str]:
+        return {
+            "label": label,
+            "title": title,
+            "body": body,
+            "tone": tone,
+        }
 
     def _hold5_latest_advice(self, summary: dict[str, Any]) -> dict[str, str]:
         latest_date = summary.get("latest_date") or "--"
@@ -677,13 +715,151 @@ class StrategyDashboardLoader:
             "tone": "warn",
         }
 
+    def _hold5_dynamic_latest_advice(self, summary: dict[str, Any]) -> dict[str, str]:
+        latest_date = summary.get("latest_date") or "--"
+        base_advice = self._hold5_latest_advice(summary)
+        formal = [item for item in summary.get("formal") or [] if isinstance(item, dict)]
+        candidates = formal or [item for item in summary.get("aggressive") or [] if isinstance(item, dict)]
+        names = self._names_for_advice(candidates)
+
+        if base_advice["title"] == "建议研究买入":
+            suffix = f"；先复核 {names}" if names else ""
+            return self._advice(
+                "按动态模式复核",
+                f"{latest_date} 有尾盘候选{suffix}，再判断第一名集中或 Top3 等权。",
+                "good",
+            )
+        if base_advice["title"] == "暂不新开仓":
+            return self._advice(
+                "跟随尾盘策略暂停",
+                f"{latest_date} 尾盘策略红灯，动态执行模式不放行新仓。",
+                "bad",
+            )
+        return self._advice(
+            "等待尾盘信号",
+            f"{latest_date} 暂无可执行核心候选；有候选后再判断第一名集中或 Top3 等权。",
+            "warn",
+        )
+
+    def _ten_billion_latest_advice(self, automation: dict[str, Any], candidate_scan: dict[str, Any]) -> dict[str, str]:
+        signal_date = self._report_date(automation, None) or "--"
+        market = self._market(automation)
+        formal = [item for item in automation.get("formal_candidates") or [] if isinstance(item, dict)]
+        watchlist = [item for item in automation.get("watchlist") or [] if isinstance(item, dict)]
+        scan_results = [item for item in candidate_scan.get("results") or [] if isinstance(item, dict)]
+
+        if formal:
+            names = self._names_for_advice(formal)
+            return self._advice(
+                "可研究买入",
+                f"{signal_date} 正式候选：{names}；按市场状态门和 T+1 节奏执行。",
+                "good",
+            )
+        if market.get("grade") != "unknown" and not market.get("tradable"):
+            reasons = "、".join(str(item) for item in market.get("pause_reasons") or [] if item)
+            reason_text = f"；原因：{reasons}" if reasons else ""
+            return self._advice("市场门暂停买入", f"{signal_date} 市场状态不可交易{reason_text}。", "bad")
+
+        block_reason = automation.get("candidate_block_reason") or ""
+        if block_reason:
+            return self._advice("暂不新开仓", f"{signal_date} {block_reason}", "warn")
+        if watchlist:
+            names = self._names_for_advice(watchlist)
+            return self._advice("仅观察候选", f"{signal_date} 无正式候选；观察名单：{names}。", "warn")
+        if scan_results:
+            names = self._names_for_advice(scan_results)
+            return self._advice(
+                "暂不新开仓",
+                f"{signal_date} 扫描到 {len(scan_results)} 只初筛结果（{names}），但未形成正式买入名单。",
+                "warn",
+            )
+        return self._advice("暂无买入建议", f"{signal_date} 暂无自动化正式候选。", "warn")
+
+    def _announcement_latest_advice(self) -> dict[str, str]:
+        path = self._latest_by_mtime(self.reports_dir / "full_announcement_recommendations", "*.md")
+        report_date = self._date_from_path(path) if path else "--"
+        if path:
+            return self._advice(
+                "暂无公告买入名单",
+                f"{report_date} 最新产物是公告推荐/回测报告，尚未接入今日正式买入名单；需按开盘缺口、止损止盈复核。",
+                "warn",
+            )
+        return self._advice(
+            "等待公告推荐",
+            "暂无最新公告推荐产物；需要先生成公告候选，再按事件评分和开盘过滤复核。",
+            "warn",
+        )
+
+    def _pre_expectation_latest_advice(self, summary: dict[str, Any]) -> dict[str, str]:
+        end_date = summary.get("end_date") or self._date_from_timestamp(summary.get("generated_at")) or "--"
+        variants = summary.get("variants") if isinstance(summary.get("variants"), dict) else {}
+        proxy_name = "calendar_proxy_grid_best" if "calendar_proxy_grid_best" in variants else ""
+        if not proxy_name:
+            proxy_name = next((name for name in variants if str(name).startswith("calendar_proxy")), "")
+        if proxy_name:
+            variant = variants.get(proxy_name) if isinstance(variants.get(proxy_name), dict) else {}
+            metrics = variant.get("metrics") if isinstance(variant.get("metrics"), dict) else {}
+            trade_count = self._display_count(metrics.get("trade_count"))
+            return self._advice(
+                "仅研究观察",
+                f"回测截至 {end_date}，{proxy_name} 有 {trade_count} 笔代理交易；当前未输出今日可买名单。",
+                "warn",
+            )
+        return self._advice(
+            "仅研究观察",
+            f"回测截至 {end_date}；该策略仍是事件/日历代理验证，不直接作为今日买入。",
+            "warn",
+        )
+
+    def _range_trader_latest_advice(self, review_rows: list[dict[str, Any]]) -> dict[str, str]:
+        if not review_rows:
+            return self._advice(
+                "等待区间扫描",
+                "暂无最新区间复盘 CSV；先运行股票池扫描，再看买入区间、止损和 reward/risk。",
+                "warn",
+            )
+
+        latest_report_date = max(str(row.get("report_date") or row.get("signal_latest_date") or "") for row in review_rows)
+        latest_rows = [
+            row
+            for row in review_rows
+            if str(row.get("report_date") or row.get("signal_latest_date") or "") == latest_report_date
+        ]
+        names = self._names_for_advice(latest_rows)
+        current_date = max(str(row.get("current_date") or "") for row in review_rows) or latest_report_date or "--"
+        names_text = f"；最近信号：{names}" if names else ""
+        return self._advice(
+            "按区间复核，不追价",
+            f"最新复盘到 {current_date}{names_text}；只有触达买入区间后才按止损/止盈计划执行。",
+            "info",
+        )
+
+    def _live_paper_latest_advice(self, live_trading: dict[str, Any]) -> dict[str, str]:
+        trade_date = live_trading.get("trade_date") or "--"
+        planned_orders = self._int_value(live_trading.get("planned_orders"))
+        fills = self._int_value(live_trading.get("fills"))
+        rejections = self._int_value(live_trading.get("rejections"))
+        exposure = self._float_value(live_trading.get("exposure"))
+
+        if planned_orders > 0:
+            return self._advice(
+                "纸面计划买入",
+                f"{trade_date} 计划订单 {planned_orders} 笔，已成交 {fills} 笔，拒绝 {rejections} 笔；仅纸面执行。",
+                "good",
+            )
+        return self._advice(
+            "今日无纸面买入",
+            f"{trade_date} 计划订单 0 笔，当前纸面仓位 {self._percent(exposure)}；继续等待公告信号。",
+            "warn",
+        )
+
     def _long_term_hold_latest_advice(self, scan: dict[str, Any], daily: dict[str, Any]) -> dict[str, str]:
         results = [item for item in scan.get("results") or [] if isinstance(item, dict)]
         formal_count = int(daily.get("formal_count") or 0)
         watch_count = int(daily.get("watch_count") or 0)
         signal_date = daily.get("signal_date") or (results[0].get("latest_date") if results else "") or "--"
         reason = daily.get("reason_no_formal") or ""
-        formal = [item for item in results if float(item.get("rank_score") or 0) >= 102]
+        formal = [item for item in results if self._float_value(item.get("rank_score")) >= 102]
 
         if formal_count > 0 or formal:
             names = self._names_for_advice(formal or results)
@@ -705,9 +881,74 @@ class StrategyDashboardLoader:
             "tone": "warn",
         }
 
+    def _crowding_latest_advice(self, crowding: dict[str, Any]) -> dict[str, str]:
+        latest = crowding.get("latest") if isinstance(crowding.get("latest"), dict) else {}
+        signal_date = latest.get("date") or crowding.get("latest_date") or "--"
+        risk_level = str(latest.get("risk_level") or "未知")
+        trigger = latest.get("trigger") or "未触发"
+        score = latest.get("watch_score")
+        if score is None and isinstance(latest.get("v2"), dict):
+            score = latest["v2"].get("watch_score") or latest["v2"].get("blended_watch")
+        score_text = f"，热度 {self._number(score, 1)}" if score is not None else ""
+
+        if risk_level == "高危":
+            return self._advice(
+                "高危，暂停追涨",
+                f"{signal_date} 拥挤度为高危，触发：{trigger}{score_text}；新买入需降频或暂停。",
+                "bad",
+            )
+        if risk_level in {"30日预警", "过热观察", "升温"}:
+            return self._advice(
+                "风险升温，控制仓位",
+                f"{signal_date} 拥挤度 {risk_level}，触发：{trigger}{score_text}；优先减小新仓。",
+                "warn",
+            )
+        if risk_level != "未知":
+            return self._advice(
+                "风险背景可控",
+                f"{signal_date} 拥挤度 {risk_level}，触发：{trigger}{score_text}；仍需结合具体策略信号。",
+                "info",
+            )
+        return self._advice(
+            "等待拥挤度更新",
+            "暂无最新拥挤度摘要；先更新风险报告，再决定是否放行追涨类新仓。",
+            "warn",
+        )
+
     def _names_for_advice(self, rows: list[dict[str, Any]], limit: int = 3) -> str:
         names = [str(item.get("name") or item.get("secucode") or "").strip() for item in rows]
         return "、".join([name for name in names if name][:limit])
+
+    def _float_value(self, value: Any) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _int_value(self, value: Any) -> int:
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return 0
+
+    def _percent(self, value: Any) -> str:
+        return f"{self._float_value(value) * 100:.1f}%"
+
+    def _number(self, value: Any, digits: int = 1) -> str:
+        return f"{self._float_value(value):.{digits}f}"
+
+    def _date_from_timestamp(self, value: Any) -> str:
+        text = str(value or "")
+        match = re.search(r"\d{4}-\d{2}-\d{2}", text)
+        return match.group(0) if match else ""
+
+    def _date_from_path(self, path: Path) -> str:
+        text = str(path)
+        match = re.search(r"(20\d{2})[-_]?(\d{2})[-_]?(\d{2})", text)
+        if not match:
+            return "--"
+        return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+
 
     def _hold5_detail_sections(self, summary: dict[str, Any]) -> list[dict[str, Any]]:
         formal = [item for item in summary.get("formal") or [] if isinstance(item, dict)]
