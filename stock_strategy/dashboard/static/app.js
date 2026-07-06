@@ -101,6 +101,17 @@
     `;
   }
 
+  function strategyAdviceBlock(advice) {
+    if (!advice || (!advice.title && !advice.body)) return "";
+    return `
+      <span class="strategy-card-advice ${tone(advice.tone)}">
+        <small>${escapeHtml(advice.label || "最新购买建议")}</small>
+        <b>${escapeHtml(advice.title || "--")}</b>
+        <em>${escapeHtml(advice.body || "")}</em>
+      </span>
+    `;
+  }
+
   function artifactBlock(title, items) {
     const rows = (items || []).filter(Boolean);
     return `
@@ -314,6 +325,7 @@
         (item) => {
           const artifact = firstExistingArtifact(item);
           const outputs = item.outputs || [];
+          const advice = strategyAdviceBlock(item.latest_advice);
           const activeClass = item.id === selected.id ? "active" : "";
           return `
           <a class="strategy-card ${activeClass}" href="${escapeHtml(strategyHref(item.id))}" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
@@ -327,6 +339,7 @@
             <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
             <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
             <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
+            ${advice}
             <span class="strategy-card-meta">
               <span><small>节奏</small><b>${escapeHtml(item.cadence || "--")}</b></span>
               <span><small>信号</small><b>${escapeHtml(String((item.signals || []).length))}</b></span>

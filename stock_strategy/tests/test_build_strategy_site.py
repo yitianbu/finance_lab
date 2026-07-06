@@ -73,10 +73,12 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertIn("scrollToStrategyDetail", app_js)
             self.assertIn("strategyHref", app_js)
             self.assertIn('<a class="strategy-card', app_js)
+            self.assertIn("strategy-card-advice", app_js)
             self.assertIn('href="${escapeHtml(strategyHref(item.id))}"', app_js)
             self.assertIn('searchParams.set("strategy"', app_js)
             self.assertIn(".strategy-detail-module", styles)
             self.assertIn(".strategy-detail-deep", styles)
+            self.assertIn(".strategy-card-advice", styles)
             self.assertIn(".dashboard-module", styles)
             self.assertIn("grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));", styles)
 
@@ -84,6 +86,7 @@ class BuildStrategySiteTests(unittest.TestCase):
             self.assertEqual(payload["report_date"], "2026-06-24")
             hold5_strategy = next(item for item in payload["strategy_catalog"] if item["id"] == "hold5-tail")
             self.assertIn("detail_sections", hold5_strategy)
+            self.assertIn("latest_advice", hold5_strategy)
             self.assertTrue((output / "files" / "reports" / "automation_5_14_50" / "20260626_145203" / "summary.json").is_file())
             self.assertTrue((output / "files" / "scripts" / "stock_strategy" / "run_hold5_tail_candidates.py").is_file())
 

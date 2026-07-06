@@ -50,6 +50,10 @@ class StrategyDashboardLoader:
 
         hold5_summary_path = self._latest_hold5_candidate_path("summary.json")
         hold5_summary = self._read_json(hold5_summary_path, "hold5_top3_summary") if hold5_summary_path else {}
+        long_term_scan_path = self._latest_by_mtime(self.reports_dir / "long_term_hold", "long_term_hold_scan.json")
+        long_term_scan = self._read_json(long_term_scan_path, "long_term_hold_scan") if long_term_scan_path else {}
+        long_term_daily_path = self._latest_long_term_daily_summary_path()
+        long_term_daily = self._read_json(long_term_daily_path, "long_term_hold_daily") if long_term_daily_path else {}
 
         report_date = self._report_date(automation, automation_path)
         data_notes = list(automation.get("data_notes") or [])
@@ -60,7 +64,7 @@ class StrategyDashboardLoader:
             "mode": "local",
             "report_date": report_date,
             "loaded_at": datetime.now(timezone.utc).isoformat(),
-            "strategy_catalog": self._strategy_catalog(hold5_summary),
+            "strategy_catalog": self._strategy_catalog(hold5_summary, long_term_scan, long_term_daily),
             "market": self._market(automation),
             "candidate_status": self._candidate_status(automation, candidate_scan),
             "t_plus_1": automation.get("t_plus_1") or {},
@@ -250,7 +254,12 @@ class StrategyDashboardLoader:
         except ValueError:
             return text
 
-    def _strategy_catalog(self, hold5_summary: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def _strategy_catalog(
+        self,
+        hold5_summary: dict[str, Any] | None = None,
+        long_term_scan: dict[str, Any] | None = None,
+        long_term_daily: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         return [
             {
                 "id": "hold5-tail",
@@ -269,6 +278,7 @@ class StrategyDashboardLoader:
                     {"label": "风险分层", "description": "输出正式核心、进取研究和观察名单；策略红灯时默认不建议新开仓。"},
                 ],
                 "detail_sections": self._hold5_detail_sections(hold5_summary or {}),
+                "latest_advice": self._hold5_latest_advice(hold5_summary or {}),
                 "signals": [
                     "旧底层排序：胜率、平均5日收益、利润因子、尾盘位置、成交额、板块共振和主力净额。",
                     "30样本强收益状态拦截：平均收益、胜率、相对最强指数超额和滚动最大回撤同时达标。",
@@ -546,6 +556,7 @@ class StrategyDashboardLoader:
                 "mode": "单股长期相对强势",
                 "objective": "寻找长期趋势向上且持续跑赢基准的股票，尽量减少买卖，只在趋势或相对收益恶化时退出。",
                 "workflow": ["日线K线", "长期均线", "相对基准", "低换手买点", "持仓卖点"],
+                "latest_advice": self._long_term_hold_latest_advice(long_term_scan or {}, long_term_daily or {}),
                 "signals": [
                     "收盘价在 MA200 上方，且 MA60 > MA120 > MA200。",
                     "120日和240日收益均要求跑赢基准，默认基准为沪深300 `000300.SH`。",
@@ -624,6 +635,79 @@ class StrategyDashboardLoader:
                 ],
             },
         ]
+
+    def _hold5_latest_advice(self, summary: dict[str, Any]) -> dict[str, str]:
+        latest_date = summary.get("latest_date") or "--"
+        sell_date = summary.get("sell_date") or "--"
+        formal = [item for item in summary.get("formal") or [] if isinstance(item, dict)]
+        aggressive = [item for item in summary.get("aggressive") or [] if isinstance(item, dict)]
+        watch = [item for item in summary.get("watch") or [] if isinstance(item, dict)]
+        switch = summary.get("strategy_switch") if isinstance(summary.get("strategy_switch"), dict) else {}
+        state = str(switch.get("state") or "")
+
+        if formal:
+            names = self._names_for_advice(formal)
+            return {
+                "label": "最新购买建议",
+                "title": "建议研究买入",
+                "body": f"{latest_date} 核心候选：{names}；第5个交易日 {sell_date} 复核。",
+                "tone": "good",
+            }
+        if state == "红色":
+            names = self._names_for_advice(aggressive or watch)
+            suffix = f"；进取/观察：{names}" if names else ""
+            return {
+                "label": "最新购买建议",
+                "title": "暂不新开仓",
+                "body": f"{latest_date} 策略红灯，无正式候选{suffix}。",
+                "tone": "bad",
+            }
+        if aggressive:
+            names = self._names_for_advice(aggressive)
+            return {
+                "label": "最新购买建议",
+                "title": "仅进取研究",
+                "body": f"{latest_date} 无核心候选；可观察 {names}，不作为正式买入。",
+                "tone": "warn",
+            }
+        return {
+            "label": "最新购买建议",
+            "title": "暂无买入建议",
+            "body": f"{latest_date} 暂无正式候选。",
+            "tone": "warn",
+        }
+
+    def _long_term_hold_latest_advice(self, scan: dict[str, Any], daily: dict[str, Any]) -> dict[str, str]:
+        results = [item for item in scan.get("results") or [] if isinstance(item, dict)]
+        formal_count = int(daily.get("formal_count") or 0)
+        watch_count = int(daily.get("watch_count") or 0)
+        signal_date = daily.get("signal_date") or (results[0].get("latest_date") if results else "") or "--"
+        reason = daily.get("reason_no_formal") or ""
+        formal = [item for item in results if float(item.get("rank_score") or 0) >= 102]
+
+        if formal_count > 0 or formal:
+            names = self._names_for_advice(formal or results)
+            return {
+                "label": "最新购买建议",
+                "title": "可研究买入",
+                "body": f"{signal_date} 高分候选：{names}；按买入区间和长期止损执行。",
+                "tone": "good",
+            }
+
+        watch_names = self._names_for_advice(results)
+        reason_text = f"；原因：{reason}" if reason else ""
+        watch_text = f"；观察 {watch_count} 只" if watch_count else ""
+        names_text = f"：{watch_names}" if watch_names else ""
+        return {
+            "label": "最新购买建议",
+            "title": "暂无正式买入",
+            "body": f"{signal_date} 未触发正式买入{watch_text}{names_text}{reason_text}。",
+            "tone": "warn",
+        }
+
+    def _names_for_advice(self, rows: list[dict[str, Any]], limit: int = 3) -> str:
+        names = [str(item.get("name") or item.get("secucode") or "").strip() for item in rows]
+        return "、".join([name for name in names if name][:limit])
 
     def _hold5_detail_sections(self, summary: dict[str, Any]) -> list[dict[str, Any]]:
         formal = [item for item in summary.get("formal") or [] if isinstance(item, dict)]
@@ -717,6 +801,15 @@ class StrategyDashboardLoader:
             and path.parent.name[:8].isdigit()
             and not path.parent.name.startswith("2026-")
         ]
+        if not paths:
+            return None
+        return max(paths, key=lambda path: (path.stat().st_mtime, str(path)))
+
+    def _latest_long_term_daily_summary_path(self) -> Path | None:
+        directory = self.reports_dir / "long_term_hold"
+        if not directory.exists():
+            return None
+        paths = [path for path in directory.glob("automation_2_daily_*/summary.json") if path.is_file()]
         if not paths:
             return None
         return max(paths, key=lambda path: (path.stat().st_mtime, str(path)))

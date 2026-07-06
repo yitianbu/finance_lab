@@ -152,9 +152,10 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["live_trading"]["trade_date"], "2026-06-21")
             self.assertIn("automation_summary", dashboard["source_files"])
             self.assertGreaterEqual(len(dashboard["strategy_catalog"]), 6)
-            self.assertIn("hold5-tail", {item["id"] for item in dashboard["strategy_catalog"]})
+            hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
             self.assertIn("ten-billion-turnover", {item["id"] for item in dashboard["strategy_catalog"]})
             self.assertIn("long-term-hold", {item["id"] for item in dashboard["strategy_catalog"]})
+            self.assertIn("latest_advice", hold5_strategy)
 
     def test_load_dashboard_handles_missing_and_empty_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -297,6 +298,8 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertIn("hold5_top3_summary", dashboard["source_files"])
             hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
             self.assertIn("20260626_145203/summary.json", hold5_strategy["reports"][0]["path"])
+            self.assertEqual(hold5_strategy["latest_advice"]["title"], "建议研究买入")
+            self.assertIn("兆易创新、德明利、中国巨石", hold5_strategy["latest_advice"]["body"])
             detail_sections = hold5_strategy["detail_sections"]
             detail_titles = [section["title"] for section in detail_sections]
             self.assertIn("保留口径", detail_titles)
@@ -307,6 +310,41 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertIn("2026-06-26", latest_text)
             self.assertIn("硬过滤后 418 只", latest_text)
             self.assertIn("正式候选 4 只", latest_text)
+
+    def test_load_dashboard_includes_long_term_hold_latest_advice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            write_json(
+                base_dir / "reports" / "automation_10" / "summary_2026-07-06.json",
+                {"actual_signal_date": "2026-07-06", "formal_candidates": []},
+            )
+            write_json(
+                base_dir / "reports" / "long_term_hold" / "20260706_194319" / "long_term_hold_scan.json",
+                {
+                    "generated_at": "2026-07-06T19:43:43",
+                    "results": [
+                        {"name": "药明康德", "rank_score": 97.3, "latest_date": "2026-07-06"},
+                        {"name": "益生股份", "rank_score": 96.9, "latest_date": "2026-07-06"},
+                    ],
+                },
+            )
+            write_json(
+                base_dir / "reports" / "long_term_hold" / "automation_2_daily_20260706_194319" / "summary.json",
+                {
+                    "signal_date": "2026-07-06",
+                    "formal_count": 0,
+                    "watch_count": 4,
+                    "reason_no_formal": "rank_score_below_102",
+                },
+            )
+
+            dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
+
+            strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "long-term-hold")
+            self.assertEqual(strategy["latest_advice"]["title"], "暂无正式买入")
+            self.assertIn("2026-07-06", strategy["latest_advice"]["body"])
+            self.assertIn("观察 4 只", strategy["latest_advice"]["body"])
+            self.assertIn("rank_score_below_102", strategy["latest_advice"]["body"])
 
 
 if __name__ == "__main__":
