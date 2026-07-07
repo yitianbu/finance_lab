@@ -1,0 +1,96 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from scripts.stock_strategy.build_strategy_site import build_static_site
+
+
+def write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False), "utf-8")
+
+
+class BuildStrategySiteTests(unittest.TestCase):
+    def test_build_static_site_writes_publishable_assets_and_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_json(
+                root / "reports" / "automation_10" / "summary_2026-06-24.json",
+                {"actual_signal_date": "2026-06-24", "formal_candidates": []},
+            )
+            write_json(
+                root / "reports" / "automation_5_14_50" / "20260626_145203" / "summary.json",
+                {
+                    "latest_date": "2026-06-26",
+                    "sell_date": "2026-07-03",
+                    "formal": [{"secucode": "000001.SZ", "name": "平安银行"}],
+                },
+            )
+            report = root / "reports" / "automation_5_14_50" / "20260626_145203" / "report.md"
+            report.write_text("# 候选报告\n", "utf-8")
+            csv = root / "reports" / "automation_5_14_50" / "20260626_145203" / "hold5_candidates.csv"
+            csv.write_text("secucode,name\n000001.SZ,平安银行\n", "utf-8")
+            script = root / "scripts" / "stock_strategy" / "run_hold5_tail_candidates.py"
+            script.parent.mkdir(parents=True)
+            script.write_text("print('scan')\n", "utf-8")
+            doc = root / "docs" / "hold5_tail_strategy_summary.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text("# 策略总结\n", "utf-8")
+
+            output = root / "public"
+            result = build_static_site(root, output, clean=True)
+
+            self.assertEqual(result["strategy_count"], 8)
+            self.assertGreaterEqual(result["copied_artifacts"], 4)
+            self.assertTrue((output / "index.html").is_file())
+            self.assertTrue((output / "app.js").is_file())
+            self.assertTrue((output / "holdings_panel.js").is_file())
+            self.assertTrue((output / "strategy_order.js").is_file())
+            self.assertTrue((output / "styles.css").is_file())
+            self.assertTrue((output / "dashboard.json").is_file())
+
+            html = (output / "index.html").read_text("utf-8")
+            self.assertIn('data-api="dashboard.json"', html)
+            self.assertIn('data-file-base="files"', html)
+            self.assertIn('href="styles.css?v=', html)
+            self.assertIn('src="holdings_panel.js?v=', html)
+            self.assertIn('src="strategy_order.js?v=', html)
+            self.assertIn('src="app.js?v=', html)
+            self.assertIn('aria-label="策略模块"', html)
+            self.assertIn(">策略模块</h2>", html)
+            self.assertNotIn(">策略卡片</h2>", html)
+            self.assertIn('id="strategy-detail-panel" class="strategy-detail-panel"', html)
+            self.assertNotIn('id="strategy-detail-panel" class="panel strategy-detail-panel"', html)
+            self.assertIn('class="dashboard-module"', html)
+            self.assertIn('aria-label="10亿增量策略控制台"', html)
+
+            app_js = (output / "app.js").read_text("utf-8")
+            styles = (output / "styles.css").read_text("utf-8")
+            self.assertIn('class="strategy-detail-module"', app_js)
+            self.assertIn('class="strategy-detail-deep"', app_js)
+            self.assertIn("detailSection", app_js)
+            self.assertIn("scrollToStrategyDetail", app_js)
+            self.assertIn("strategyHref", app_js)
+            self.assertIn('<a class="strategy-card', app_js)
+            self.assertIn("strategy-card-advice", app_js)
+            self.assertIn('href="${escapeHtml(strategyHref(item.id))}"', app_js)
+            self.assertIn('searchParams.set("strategy"', app_js)
+            self.assertIn(".strategy-detail-module", styles)
+            self.assertIn(".strategy-detail-deep", styles)
+            self.assertIn(".strategy-card-advice", styles)
+            self.assertIn(".dashboard-module", styles)
+            self.assertIn("grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));", styles)
+
+            payload = json.loads((output / "dashboard.json").read_text("utf-8"))
+            self.assertEqual(payload["report_date"], "2026-06-24")
+            self.assertNotIn("pre-expectation", {item["id"] for item in payload["strategy_catalog"]})
+            hold5_strategy = next(item for item in payload["strategy_catalog"] if item["id"] == "hold5-tail")
+            self.assertIn("detail_sections", hold5_strategy)
+            self.assertIn("latest_advice", hold5_strategy)
+            self.assertTrue((output / "files" / "reports" / "automation_5_14_50" / "20260626_145203" / "summary.json").is_file())
+            self.assertTrue((output / "files" / "scripts" / "stock_strategy" / "run_hold5_tail_candidates.py").is_file())
+
+
+if __name__ == "__main__":
+    unittest.main()

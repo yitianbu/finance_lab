@@ -90,3 +90,17 @@ Backtest limitations:
 ## Output Data
 
 Generated `data/`, `reports/`, `tmp/`, local virtual environments, and automation runtime files are intentionally ignored by Git. Recreate them by running the scripts on the target machine.
+
+## Publish Strategy Site
+
+Build a static strategy site that can be uploaded to any static host:
+
+```bash
+PYTHONPATH=stock_strategy:. python3 scripts/stock_strategy/build_strategy_site.py --clean
+```
+
+The publishable site is written to `dist/strategy_site/`. Preview it locally:
+
+```bash
+python3 -m http.server 8899 --bind 127.0.0.1 --directory dist/strategy_site
+```

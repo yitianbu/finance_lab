@@ -135,6 +135,18 @@ class DashboardDataLoaderTests(unittest.TestCase):
                     "rejections": 0,
                 },
             )
+            write_json(
+                base_dir / "reports" / "crowding_warning" / "crowding_warning_v2_current_20260624_170157.json",
+                {
+                    "latest_date": "2026-06-24",
+                    "latest": {
+                        "date": "2026-06-24",
+                        "risk_level": "高危",
+                        "trigger": "末端冲顶",
+                        "watch_score": 76.6,
+                    },
+                },
+            )
 
             dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
 
@@ -151,6 +163,26 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["holdings_alerts"][0]["secucode"], "300450.SZ")
             self.assertEqual(dashboard["live_trading"]["trade_date"], "2026-06-21")
             self.assertIn("automation_summary", dashboard["source_files"])
+            self.assertEqual(len(dashboard["strategy_catalog"]), 8)
+            self.assertNotIn("pre-expectation", {item["id"] for item in dashboard["strategy_catalog"]})
+            hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
+            ten_billion_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "ten-billion-turnover")
+            live_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "live-paper-trading")
+            crowding_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "crowding-warning")
+            self.assertIn("long-term-hold", {item["id"] for item in dashboard["strategy_catalog"]})
+            for strategy in dashboard["strategy_catalog"]:
+                self.assertIn("latest_advice", strategy, strategy["id"])
+                self.assertEqual(strategy["latest_advice"]["label"], "最新购买建议")
+                self.assertTrue(strategy["latest_advice"]["title"], strategy["id"])
+                self.assertTrue(strategy["latest_advice"]["body"], strategy["id"])
+            self.assertIn("latest_advice", hold5_strategy)
+            self.assertEqual(ten_billion_strategy["latest_advice"]["title"], "暂不新开仓")
+            self.assertIn("2026-06-24", ten_billion_strategy["latest_advice"]["body"])
+            self.assertIn("不编造正式候选", ten_billion_strategy["latest_advice"]["body"])
+            self.assertEqual(live_strategy["latest_advice"]["title"], "今日无纸面买入")
+            self.assertIn("2026-06-21", live_strategy["latest_advice"]["body"])
+            self.assertEqual(crowding_strategy["latest_advice"]["title"], "高危，暂停追涨")
+            self.assertIn("末端冲顶", crowding_strategy["latest_advice"]["body"])
 
     def test_load_dashboard_handles_missing_and_empty_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -175,6 +207,7 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(dashboard["market_states"], [])
             self.assertEqual(dashboard["holdings_alerts"], [])
             self.assertIn("未找到最新回测摘要", dashboard["data_notes"])
+            self.assertEqual(dashboard["strategy_catalog"][0]["name"], "14:50 尾盘5日持有")
 
     def test_load_dashboard_ignores_csv_extra_columns(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -196,6 +229,47 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual(len(dashboard["user_positions"]), 1)
             self.assertEqual(dashboard["user_positions"][0]["secucode"], "300450.SZ")
             self.assertNotIn(None, dashboard["user_positions"][0])
+
+    def test_holdings_alerts_prefer_current_user_holdings_over_stale_quote_checks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            write_json(
+                base_dir / "reports" / "automation_10" / "summary_2026-06-24.json",
+                {
+                    "actual_signal_date": "2026-06-24",
+                    "formal_candidates": [],
+                    "holding_quote_check": [
+                        {
+                            "secucode": "300450.SZ",
+                            "name": "先导智能",
+                            "action": "旧持仓检查",
+                        }
+                    ],
+                },
+            )
+            write_csv(
+                base_dir / "data" / "live_trading" / "user_positions.csv",
+                [
+                    {
+                        "secucode": "300450.SZ",
+                        "name": "先导智能",
+                        "status": "closed",
+                        "notes": "已清仓",
+                    },
+                    {
+                        "secucode": "688002.SH",
+                        "name": "睿创微纳",
+                        "status": "holding",
+                        "notes": "当前持仓",
+                    },
+                ],
+            )
+
+            dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
+
+            self.assertEqual(len(dashboard["holdings_alerts"]), 1)
+            self.assertEqual(dashboard["holdings_alerts"][0]["secucode"], "688002.SH")
+            self.assertEqual(dashboard["holdings_alerts"][0]["action"], "当前持仓")
 
     def test_load_dashboard_includes_latest_hold5_top3_strategy(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -231,6 +305,13 @@ class DashboardDataLoaderTests(unittest.TestCase):
                     "watch": [{"secucode": "300975.SZ", "name": "商络电子"}],
                 },
             )
+            write_json(
+                base_dir / "reports" / "automation_5_14_50" / "position_review_20260627_150000" / "summary.json",
+                {
+                    "latest_date": "2026-06-27",
+                    "position_reviews": [{"secucode": "000001.SZ"}],
+                },
+            )
 
             dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
 
@@ -242,6 +323,55 @@ class DashboardDataLoaderTests(unittest.TestCase):
             self.assertEqual([item["name"] for item in hold5["picks"]], ["兆易创新", "德明利", "中国巨石"])
             self.assertEqual(hold5["watch_count"], 1)
             self.assertIn("hold5_top3_summary", dashboard["source_files"])
+            hold5_strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "hold5-tail")
+            self.assertIn("20260626_145203/summary.json", hold5_strategy["reports"][0]["path"])
+            self.assertEqual(hold5_strategy["latest_advice"]["title"], "建议研究买入")
+            self.assertIn("兆易创新、德明利、中国巨石", hold5_strategy["latest_advice"]["body"])
+            detail_sections = hold5_strategy["detail_sections"]
+            detail_titles = [section["title"] for section in detail_sections]
+            self.assertIn("保留口径", detail_titles)
+            self.assertIn("最新报告怎么看", detail_titles)
+            self.assertIn("为什么不是实盘指令", detail_titles)
+            latest_section = next(section for section in detail_sections if section["title"] == "最新报告怎么看")
+            latest_text = " ".join(latest_section["items"])
+            self.assertIn("2026-06-26", latest_text)
+            self.assertIn("硬过滤后 418 只", latest_text)
+            self.assertIn("正式候选 4 只", latest_text)
+
+    def test_load_dashboard_includes_long_term_hold_latest_advice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            write_json(
+                base_dir / "reports" / "automation_10" / "summary_2026-07-06.json",
+                {"actual_signal_date": "2026-07-06", "formal_candidates": []},
+            )
+            write_json(
+                base_dir / "reports" / "long_term_hold" / "20260706_194319" / "long_term_hold_scan.json",
+                {
+                    "generated_at": "2026-07-06T19:43:43",
+                    "results": [
+                        {"name": "药明康德", "rank_score": 97.3, "latest_date": "2026-07-06"},
+                        {"name": "益生股份", "rank_score": 96.9, "latest_date": "2026-07-06"},
+                    ],
+                },
+            )
+            write_json(
+                base_dir / "reports" / "long_term_hold" / "automation_2_daily_20260706_194319" / "summary.json",
+                {
+                    "signal_date": "2026-07-06",
+                    "formal_count": 0,
+                    "watch_count": 4,
+                    "reason_no_formal": "rank_score_below_102",
+                },
+            )
+
+            dashboard = StrategyDashboardLoader(base_dir).load_dashboard()
+
+            strategy = next(item for item in dashboard["strategy_catalog"] if item["id"] == "long-term-hold")
+            self.assertEqual(strategy["latest_advice"]["title"], "暂无正式买入")
+            self.assertIn("2026-07-06", strategy["latest_advice"]["body"])
+            self.assertIn("观察 4 只", strategy["latest_advice"]["body"])
+            self.assertIn("rank_score_below_102", strategy["latest_advice"]["body"])
 
 
 if __name__ == "__main__":

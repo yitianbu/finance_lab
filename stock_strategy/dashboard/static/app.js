@@ -1,8 +1,18 @@
 (function () {
-  const apiUrl = document.querySelector(".app-shell").dataset.api;
+  const appShell = document.querySelector(".app-shell");
+  const apiUrl = appShell.dataset.api;
+  const fileBase = appShell.dataset.fileBase || "/files";
   const refreshButton = document.getElementById("refresh-button");
   const chartCanvas = document.getElementById("market-chart");
+  const strategyListElement = document.getElementById("strategy-list");
+  const strategyOrder = window.StrategyOrder;
+  const holdingsPanel = window.HoldingsPanel;
+  const strategyOrderStorageKey = "finance_lab.strategy_order.v1";
   let latestDashboard = null;
+  let selectedStrategyId = "";
+  let draggedStrategyId = "";
+  let dragClickGuard = false;
+  let pointerDrag = null;
 
   function text(value, fallback = "--") {
     if (value === null || value === undefined || value === "") return fallback;
@@ -39,6 +49,360 @@
 
   function badge(label, tone) {
     return `<span class="badge ${tone || ""}">${escapeHtml(label)}</span>`;
+  }
+
+  function tone(value) {
+    return ["bad", "good", "info", "warn"].includes(value) ? value : "";
+  }
+
+  function fileUrl(path) {
+    const encodedPath = String(path).split("/").map(encodeURIComponent).join("/");
+    const base = fileBase.endsWith("/") ? fileBase.slice(0, -1) : fileBase;
+    return `${base}/${encodedPath}`;
+  }
+
+  function artifactLink(item) {
+    if (!item || !item.path) return `<span class="muted">暂无</span>`;
+    const label = escapeHtml(item.label || item.path);
+    const path = escapeHtml(item.path);
+    const kind = escapeHtml((item.kind || "file").toUpperCase());
+    if (!item.exists) {
+      return `<span class="artifact missing"><span class="artifact-label">${label}<small>${kind}</small></span><code>${path}</code></span>`;
+    }
+    return `<a class="artifact" href="${fileUrl(item.path)}" target="_blank" rel="noreferrer"><span class="artifact-label">${label}<small>${kind}</small></span><code>${path}</code></a>`;
+  }
+
+  function detailBlock(title, items) {
+    const rows = (items || []).filter(Boolean);
+    return `
+      <div class="detail-block">
+        <h3>${escapeHtml(title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </div>
+    `;
+  }
+
+  function detailSection(section) {
+    if (!section || !section.title) return "";
+    const rows = (section.items || []).filter(Boolean);
+    return `
+      <article class="strategy-detail-deep">
+        <h3>${escapeHtml(section.title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </article>
+    `;
+  }
+
+  function strategyAdviceBlock(advice) {
+    if (!advice || (!advice.title && !advice.body)) return "";
+    return `
+      <span class="strategy-card-advice ${tone(advice.tone)}">
+        <small>${escapeHtml(advice.label || "最新购买建议")}</small>
+        <b>${escapeHtml(advice.title || "--")}</b>
+        <em>${escapeHtml(advice.body || "")}</em>
+      </span>
+    `;
+  }
+
+  function artifactBlock(title, items) {
+    const rows = (items || []).filter(Boolean);
+    return `
+      <div class="detail-block artifact-block">
+        <h3>${escapeHtml(title)}</h3>
+        ${
+          rows.length
+            ? `<ul>${rows.map((item) => `<li>${artifactLink(item)}</li>`).join("")}</ul>`
+            : `<div class="empty slim">暂无</div>`
+        }
+      </div>
+    `;
+  }
+
+  function firstExistingArtifact(strategy) {
+    const rows = [
+      ...(strategy.reports || []),
+      ...(strategy.docs || []),
+      ...(strategy.scripts || []),
+    ];
+    return rows.find((item) => item && item.exists && item.path) || rows.find((item) => item && item.path);
+  }
+
+  function artifactCount(strategy) {
+    return [
+      ...(strategy.reports || []),
+      ...(strategy.docs || []),
+      ...(strategy.scripts || []),
+    ].filter((item) => item && item.exists && item.path).length;
+  }
+
+  function readStrategyOrder() {
+    try {
+      const value = window.localStorage.getItem(strategyOrderStorageKey);
+      const parsed = value ? JSON.parse(value) : [];
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveStrategyOrder(orderIds) {
+    try {
+      window.localStorage.setItem(strategyOrderStorageKey, JSON.stringify(orderIds));
+    } catch {
+      // Browsers can block localStorage in strict privacy modes; sorting still works until refresh.
+    }
+  }
+
+  function orderedStrategyCatalog(catalog) {
+    if (!strategyOrder) return catalog;
+    return strategyOrder.applyStoredOrder(catalog, readStrategyOrder());
+  }
+
+  function strategyIdFromUrl() {
+    try {
+      return new URL(window.location.href).searchParams.get("strategy") || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function updateStrategyUrl(strategyId) {
+    if (!strategyId) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("strategy", strategyId);
+      url.hash = "strategy-detail-panel";
+      window.history.pushState(null, "", url);
+    } catch {
+      // If history is unavailable, the visual jump still works.
+    }
+  }
+
+  function strategyHref(strategyId) {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("strategy", strategyId);
+      url.hash = "strategy-detail-panel";
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return `?strategy=${encodeURIComponent(strategyId)}#strategy-detail-panel`;
+    }
+  }
+
+  function scrollToStrategyDetail(behavior = "smooth") {
+    const target = document.getElementById("strategy-detail-panel") || document.querySelector(".strategy-detail-panel");
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior, block: "start" });
+      if (typeof target.focus === "function") {
+        target.focus({ preventScroll: true });
+      }
+    });
+  }
+
+  function renderedStrategyIds() {
+    return Array.from(strategyListElement.querySelectorAll(".strategy-card"))
+      .map((card) => card.dataset.strategyId)
+      .filter(Boolean);
+  }
+
+  function strategyCardFromEvent(event) {
+    const target = event.target instanceof Element ? event.target : null;
+    return target ? target.closest(".strategy-card") : null;
+  }
+
+  function strategyCardFromPoint(clientX, clientY) {
+    const target = document.elementFromPoint(clientX, clientY);
+    return target ? target.closest(".strategy-card") : null;
+  }
+
+  function strategyCardById(strategyId) {
+    return Array.from(strategyListElement.querySelectorAll(".strategy-card"))
+      .find((card) => card.dataset.strategyId === strategyId);
+  }
+
+  function clearDragMarkers() {
+    strategyListElement.classList.remove("dragging");
+    strategyListElement.querySelectorAll(".strategy-card").forEach((card) => {
+      card.classList.remove("dragging", "drag-before", "drag-after");
+      card.removeAttribute("aria-grabbed");
+    });
+  }
+
+  function shouldDropAfter(event, card) {
+    const rect = card.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const midY = rect.top + rect.height / 2;
+    const horizontalIntent = Math.abs(event.clientX - midX) > Math.abs(event.clientY - midY);
+    return horizontalIntent ? event.clientX > midX : event.clientY > midY;
+  }
+
+  function previewDropTarget(card, event) {
+    clearDragMarkers();
+    strategyListElement.classList.add("dragging");
+    const draggedCard = strategyCardById(draggedStrategyId);
+    draggedCard?.classList.add("dragging");
+    draggedCard?.setAttribute("aria-grabbed", "true");
+    if (!card || card.dataset.strategyId === draggedStrategyId) return;
+    card.classList.add(shouldDropAfter(event, card) ? "drag-after" : "drag-before");
+  }
+
+  function commitDraggedOrder(card, event) {
+    if (!draggedStrategyId || !strategyOrder) return;
+    const targetId = card?.dataset.strategyId || "";
+    const orderIds = renderedStrategyIds();
+    const lastId = orderIds.filter((id) => id !== draggedStrategyId).at(-1);
+    const nextOrder = targetId
+      ? shouldDropAfter(event, card)
+        ? strategyOrder.moveAfter(orderIds, draggedStrategyId, targetId)
+        : strategyOrder.moveBefore(orderIds, draggedStrategyId, targetId)
+      : strategyOrder.moveAfter(orderIds, draggedStrategyId, lastId);
+
+    saveStrategyOrder(nextOrder);
+    guardNextClickAfterDrag();
+    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+  }
+
+  function guardNextClickAfterDrag() {
+    dragClickGuard = true;
+    window.setTimeout(() => {
+      dragClickGuard = false;
+    }, 250);
+  }
+
+  function selectStrategy(strategyId, shouldScroll) {
+    selectedStrategyId = strategyId;
+    if (shouldScroll) updateStrategyUrl(strategyId);
+    if (latestDashboard) renderStrategyCatalog(latestDashboard);
+    if (shouldScroll) scrollToStrategyDetail();
+  }
+
+  function renderStrategyCatalog(data) {
+    const catalog = orderedStrategyCatalog(data.strategy_catalog || []);
+    const statsTarget = document.getElementById("strategy-stats");
+    const detailTarget = document.getElementById("strategy-detail");
+    const matrixTarget = document.getElementById("strategy-matrix");
+
+    if (!catalog.length) {
+      statsTarget.innerHTML = "";
+      strategyListElement.innerHTML = `<div class="empty">暂无策略目录。</div>`;
+      detailTarget.innerHTML = `<div class="empty">暂无策略详情。</div>`;
+      if (matrixTarget) matrixTarget.innerHTML = `<div class="empty">暂无策略矩阵。</div>`;
+      return;
+    }
+
+    const urlStrategyId = strategyIdFromUrl();
+    if (!selectedStrategyId && urlStrategyId && catalog.some((item) => item.id === urlStrategyId)) {
+      selectedStrategyId = urlStrategyId;
+    }
+    if (!selectedStrategyId || !catalog.some((item) => item.id === selectedStrategyId)) {
+      selectedStrategyId = catalog[0].id;
+    }
+    const selected = catalog.find((item) => item.id === selectedStrategyId) || catalog[0];
+    const reportCount = catalog.flatMap((item) => item.reports || []).filter((item) => item.exists).length;
+    const productionCount = catalog.filter((item) => item.tone === "good").length;
+    const researchCount = catalog.filter((item) => item.tone === "warn").length;
+
+    statsTarget.innerHTML = [
+      ["策略数量", catalog.length],
+      ["生产/增强", productionCount],
+      ["研究/纸面", researchCount],
+      ["可点产物", reportCount],
+    ]
+      .map(([label, value]) => `<div class="strategy-stat"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+      .join("");
+
+    strategyListElement.innerHTML = catalog
+      .map(
+        (item) => {
+          const artifact = firstExistingArtifact(item);
+          const outputs = item.outputs || [];
+          const advice = strategyAdviceBlock(item.latest_advice);
+          const activeClass = item.id === selected.id ? "active" : "";
+          return `
+          <a class="strategy-card ${activeClass}" href="${escapeHtml(strategyHref(item.id))}" data-strategy-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}，拖动排序，点击查看详情">
+            <span class="strategy-card-head">
+              ${badge(item.status, tone(item.tone))}
+              <span class="strategy-card-tools">
+                <span class="strategy-card-grip" aria-hidden="true"></span>
+                <span class="strategy-card-count">${artifactCount(item)} 个产物</span>
+              </span>
+            </span>
+            <strong class="strategy-card-title">${escapeHtml(item.name)}</strong>
+            <span class="strategy-card-mode">${escapeHtml(item.mode || item.cadence || "--")}</span>
+            <span class="strategy-card-objective">${escapeHtml(item.objective || "暂无策略说明。")}</span>
+            ${advice}
+            <span class="strategy-card-meta">
+              <span><small>节奏</small><b>${escapeHtml(item.cadence || "--")}</b></span>
+              <span><small>信号</small><b>${escapeHtml(String((item.signals || []).length))}</b></span>
+              <span><small>输出</small><b>${escapeHtml(String(outputs.length))}</b></span>
+            </span>
+            <span class="strategy-card-footer">
+              <span>${artifact ? escapeHtml(artifact.label || "最新产物") : "暂无产物"}</span>
+              <em>查看详情</em>
+            </span>
+          </a>
+        `;
+        }
+      )
+      .join("");
+
+    const metrics = (selected.metrics || [])
+      .map((item) => `<div class="mini-metric"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong></div>`)
+      .join("");
+    const workflowNotes = new Map(
+      (selected.workflow_notes || []).map((item) => [item.label, item.description])
+    );
+    const workflow = (selected.workflow || [])
+      .map((item, index) => {
+        const description = workflowNotes.get(item);
+        return `
+          <span>
+            <small>${index + 1}</small>
+            <strong>${escapeHtml(item)}</strong>
+            ${description ? `<em>${escapeHtml(description)}</em>` : ""}
+          </span>
+        `;
+      })
+      .join("");
+    const detailSections = (selected.detail_sections || []).map(detailSection).filter(Boolean).join("");
+
+    detailTarget.innerHTML = `
+      <section class="strategy-detail-module">
+        <div class="strategy-detail-header">
+          <div>
+            <div class="strategy-badges">
+              ${badge(selected.status, tone(selected.tone))}
+              ${badge(selected.mode || "--", "info")}
+              ${badge(selected.cadence || "--", "")}
+            </div>
+            <h2>${escapeHtml(selected.name)}</h2>
+            <p>${escapeHtml(selected.objective)}</p>
+          </div>
+        </div>
+        <div class="strategy-flow">${workflow}</div>
+        <div class="mini-metric-grid">${metrics}</div>
+        ${detailSections ? `<div class="strategy-detail-deep-grid">${detailSections}</div>` : ""}
+        <div class="detail-grid">
+          ${detailBlock("核心信号", selected.signals)}
+          ${detailBlock("风控边界", selected.risk_controls)}
+          ${detailBlock("输出结果", selected.outputs)}
+          ${detailBlock("限制说明", selected.limits)}
+          ${artifactBlock("报告产物", selected.reports)}
+          ${artifactBlock("代码与文档", [...(selected.scripts || []), ...(selected.docs || [])])}
+        </div>
+      </section>
+    `;
+
+    if (matrixTarget) matrixTarget.innerHTML = "";
   }
 
   function setMetricList(elementId, rows) {
@@ -191,6 +555,56 @@
     ]);
   }
 
+  function renderUserHoldings(data) {
+    const target = document.getElementById("user-holdings");
+    if (!target) return;
+    const rows = holdingsPanel ? holdingsPanel.buildUserHoldingRows(data) : [];
+    if (!rows.length) {
+      target.innerHTML = `<div class="empty">暂无当前持仓股。</div>`;
+      return;
+    }
+
+    target.innerHTML = `
+      <div class="user-holding-summary">
+        <span>当前持仓</span>
+        <strong>${rows.length}</strong>
+        <small>来自 data/live_trading/user_positions.csv</small>
+      </div>
+      <div class="user-holding-grid">
+        ${rows
+          .map((row) => {
+            const hasChange = row.pct_change !== undefined && row.pct_change !== null;
+            const changeClass = hasChange ? (Number(row.pct_change) >= 0 ? "up" : "down") : "";
+            return `
+              <article class="user-holding-card">
+                <div class="user-holding-head">
+                  <div>
+                    <strong>${escapeHtml(row.name || "--")}</strong>
+                    <code>${escapeHtml(row.secucode || "--")}</code>
+                  </div>
+                  <span class="price-change ${changeClass}">${hasChange ? `${number(row.pct_change, 2)}%` : "--"}</span>
+                </div>
+                <div class="user-holding-metrics">
+                  <span><small>买入</small><b>${number(row.buy_price, 2)}</b></span>
+                  <span><small>数量</small><b>${text(row.quantity)}</b></span>
+                  <span><small>成本</small><b>${number(row.amount, 2)}</b></span>
+                  <span><small>现价</small><b>${number(row.close, 2)}</b></span>
+                </div>
+                <p>${escapeHtml(row.action)}</p>
+                <dl>
+                  <div><dt>买入日</dt><dd>${escapeHtml(row.buy_date || "--")}</dd></div>
+                  <div><dt>复核日</dt><dd>${escapeHtml(row.check_date || "--")}</dd></div>
+                  <div><dt>最晚退出</dt><dd>${escapeHtml(row.max_exit_date || "--")}</dd></div>
+                </dl>
+                ${row.missing ? `<small class="user-holding-note">${escapeHtml(row.missing)}</small>` : ""}
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
   function renderNotes(data) {
     const notes = data.data_notes || [];
     document.getElementById("data-notes").innerHTML = notes.length
@@ -283,6 +697,7 @@
     latestDashboard = data;
     document.getElementById("report-date").textContent = `最新本地报告日：${text(data.report_date)}`;
     document.getElementById("loaded-at").textContent = `读取时间：${new Date(data.loaded_at).toLocaleString("zh-CN")}`;
+    renderStrategyCatalog(data);
     renderActionPanel(data);
     renderMarket(data);
     renderTPlus(data);
@@ -290,6 +705,7 @@
     renderHold5Top3(data);
     renderHoldings(data);
     renderTrades(data);
+    renderUserHoldings(data);
     renderLiveTrading(data);
     renderNotes(data);
     renderChart(data);
@@ -311,6 +727,89 @@
   }
 
   refreshButton.addEventListener("click", loadDashboard);
+  strategyListElement.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const card = strategyCardFromEvent(event);
+    if (!card || !card.dataset.strategyId) return;
+    pointerDrag = {
+      active: false,
+      id: card.dataset.strategyId,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    try {
+      strategyListElement.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is best-effort; sorting still works without it.
+    }
+  });
+  document.addEventListener("pointermove", (event) => {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+    const moved = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY);
+    if (!pointerDrag.active && moved < 8) return;
+    event.preventDefault();
+    pointerDrag.active = true;
+    draggedStrategyId = pointerDrag.id;
+    previewDropTarget(strategyCardFromPoint(event.clientX, event.clientY), event);
+  });
+  document.addEventListener("pointerup", (event) => {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+    const wasActive = pointerDrag.active;
+    if (wasActive) {
+      event.preventDefault();
+      commitDraggedOrder(strategyCardFromPoint(event.clientX, event.clientY), event);
+    }
+    pointerDrag = null;
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
+  document.addEventListener("pointercancel", () => {
+    pointerDrag = null;
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
+  strategyListElement.addEventListener("dragstart", (event) => {
+    const card = strategyCardFromEvent(event);
+    if (!card || !card.dataset.strategyId) return;
+    draggedStrategyId = card.dataset.strategyId;
+    card.classList.add("dragging");
+    card.setAttribute("aria-grabbed", "true");
+    strategyListElement.classList.add("dragging");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedStrategyId);
+    }
+  });
+  strategyListElement.addEventListener("dragover", (event) => {
+    if (!draggedStrategyId) return;
+    event.preventDefault();
+    const card = strategyCardFromEvent(event);
+    previewDropTarget(card, event);
+  });
+  strategyListElement.addEventListener("drop", (event) => {
+    if (!draggedStrategyId || !strategyOrder) return;
+    event.preventDefault();
+    const card = strategyCardFromEvent(event);
+    commitDraggedOrder(card, event);
+    clearDragMarkers();
+    draggedStrategyId = "";
+  });
+  strategyListElement.addEventListener("dragend", () => {
+    draggedStrategyId = "";
+    clearDragMarkers();
+  });
+  document.addEventListener("click", (event) => {
+    if (dragClickGuard) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target ? target.closest("[data-strategy-id]") : null;
+    if (!button) return;
+    selectStrategy(button.dataset.strategyId, Boolean(button.closest(".strategy-list")));
+  });
   window.addEventListener("resize", () => {
     if (latestDashboard) renderChart(latestDashboard);
   });
